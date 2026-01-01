@@ -1,0 +1,10 @@
+export { Knob } from './Knob';
+export { Slider } from './Slider';
+export { KickModule } from './KickModule';
+export { BassModule } from './BassModule';
+export { MelodyModule } from './MelodyModule';
+export { HiHatModule } from './HiHatModule';
+export { PadModule } from './PadModule';
+export { StructureBuilder } from './StructureBuilder';
+export { Transport } from './Transport';
+export { Visualizer } from './Visualizer';
