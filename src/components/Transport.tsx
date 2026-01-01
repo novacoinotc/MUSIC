@@ -69,6 +69,37 @@ export function Transport() {
     }
   }, [masterVolume, isInitialized]);
 
+  // Sync all parameters when they change
+  useEffect(() => {
+    if (isInitialized) {
+      audioEngine.updateKick(kick);
+    }
+  }, [kick, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      audioEngine.updateBass(bass);
+    }
+  }, [bass, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      audioEngine.updateMelody(melody);
+    }
+  }, [melody, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      audioEngine.updateHihat(hihat);
+    }
+  }, [hihat, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      audioEngine.updatePad(pad);
+    }
+  }, [pad, isInitialized]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying) {

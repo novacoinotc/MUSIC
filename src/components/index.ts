@@ -8,3 +8,4 @@ export { PadModule } from './PadModule';
 export { StructureBuilder } from './StructureBuilder';
 export { Transport } from './Transport';
 export { Visualizer } from './Visualizer';
+export { AIPrompt } from './AIPrompt';

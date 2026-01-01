@@ -10,6 +10,7 @@ import {
   StructureBuilder,
   Transport,
   Visualizer,
+  AIPrompt,
 } from '@/components';
 import { Zap, Music, Waves } from 'lucide-react';
 
@@ -65,6 +66,9 @@ export default function Home() {
         {/* Transport & Visualizer */}
         <Transport />
         <Visualizer />
+
+        {/* AI Prompt */}
+        <AIPrompt />
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
