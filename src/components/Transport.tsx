@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackStore } from '@/stores/trackStore';
 import { audioEngine } from '@/lib/audioEngine';
-import {
-  generateSectionPatterns,
-  getSectionStartBar,
-} from '@/lib/generators';
+import { generateSectionPatterns } from '@/lib/generators';
 import {
   Play,
   Square,
@@ -26,6 +23,9 @@ export function Transport() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentTime, setCurrentTime] = useState('0:0:0');
   const [seed, setSeed] = useState(Date.now());
+
+  // Track if we need to reschedule patterns
+  const needsReschedule = useRef(false);
 
   const bpm = useTrackStore((s) => s.bpm);
   const key = useTrackStore((s) => s.key);
@@ -57,19 +57,21 @@ export function Transport() {
     setIsInitialized(true);
   }, [isInitialized, bpm, masterVolume, kick, bass, melody, hihat, pad]);
 
+  // Sync BPM
   useEffect(() => {
     if (isInitialized) {
       audioEngine.setBPM(bpm);
     }
   }, [bpm, isInitialized]);
 
+  // Sync master volume
   useEffect(() => {
     if (isInitialized) {
       audioEngine.setMasterVolume(masterVolume);
     }
   }, [masterVolume, isInitialized]);
 
-  // Sync all parameters when they change
+  // Sync all instrument parameters
   useEffect(() => {
     if (isInitialized) {
       audioEngine.updateKick(kick);
@@ -100,6 +102,7 @@ export function Transport() {
     }
   }, [pad, isInitialized]);
 
+  // Time display update
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying) {
@@ -110,7 +113,9 @@ export function Transport() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const scheduleAllPatterns = useCallback(() => {
+  // Schedule all patterns to the transport
+  const scheduleAllPatterns = useCallback((currentSeed: number) => {
+    // Cancel all scheduled events
     Tone.getTransport().cancel();
 
     let startBar = 0;
@@ -124,7 +129,7 @@ export function Transport() {
         melody,
         hihat,
         pad,
-        seed + index
+        currentSeed + index
       );
 
       const startTime = Tone.Time(`${startBar}:0:0`).toSeconds();
@@ -143,11 +148,34 @@ export function Transport() {
     Tone.getTransport().schedule(() => {
       handleStop();
     }, `${totalBars}:0:0`);
-  }, [sections, key, scale, kick, bass, melody, hihat, pad, seed]);
+  }, [sections, key, scale, kick, bass, melody, hihat, pad]);
+
+  // Reschedule patterns when parameters change while playing
+  useEffect(() => {
+    if (isPlaying && isInitialized && !isRecording) {
+      // Stop current playback
+      const currentPosition = Tone.getTransport().position;
+      Tone.getTransport().stop();
+
+      // Reschedule with current seed
+      scheduleAllPatterns(seed);
+
+      // Resume from beginning (for simplicity)
+      Tone.getTransport().position = 0;
+      Tone.getTransport().start();
+    }
+  }, [key, scale, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
 
   const handlePlay = async () => {
     await initAudio();
-    scheduleAllPatterns();
+
+    // Generate new seed for fresh patterns
+    const newSeed = Date.now();
+    setSeed(newSeed);
+
+    // Schedule patterns with the new seed
+    scheduleAllPatterns(newSeed);
+
     audioEngine.play();
     setIsPlaying(true);
   };
@@ -158,27 +186,50 @@ export function Transport() {
     setCurrentTime('0:0:0');
   };
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
+    await initAudio();
+
     const newSeed = Date.now();
     setSeed(newSeed);
+
     if (isPlaying) {
-      scheduleAllPatterns();
+      // Stop, reschedule, restart
+      Tone.getTransport().stop();
+      Tone.getTransport().position = 0;
+      scheduleAllPatterns(newSeed);
+      Tone.getTransport().start();
     }
   };
 
   const handleRandomizeAll = async () => {
     await initAudio();
     randomizeAll();
-    handleRegenerate();
+
+    // Generate new seed
+    const newSeed = Date.now();
+    setSeed(newSeed);
+
+    // Small delay to let React update the store
+    setTimeout(() => {
+      if (isPlaying) {
+        Tone.getTransport().stop();
+        Tone.getTransport().position = 0;
+        // The useEffect will handle rescheduling
+      }
+    }, 50);
   };
 
   const handleExport = async () => {
     await initAudio();
     setIsRecording(true);
 
+    // Generate fresh patterns for export
+    const exportSeed = Date.now();
+
     await audioEngine.startRecording();
-    scheduleAllPatterns();
+    scheduleAllPatterns(exportSeed);
     audioEngine.play();
+    setIsPlaying(true);
 
     // Wait for the track to finish
     const totalBars = sections.reduce((sum, s) => sum + s.bars, 0);
