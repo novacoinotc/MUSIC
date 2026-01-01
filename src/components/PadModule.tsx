@@ -4,13 +4,15 @@ import { useTrackStore } from '@/stores/trackStore';
 import { Knob } from './Knob';
 import { audioEngine } from '@/lib/audioEngine';
 
-type ChordType = 'minor' | 'major' | 'sus4' | 'dim' | 'aug';
+type ChordType = 'minor' | 'major' | 'sus4' | 'sus2' | 'dim' | 'aug' | 'add9' | 'minor7' | 'major7';
 
 const CHORDS: { value: ChordType; label: string }[] = [
   { value: 'minor', label: 'Min' },
   { value: 'major', label: 'Maj' },
   { value: 'sus4', label: 'Sus4' },
-  { value: 'dim', label: 'Dim' },
+  { value: 'sus2', label: 'Sus2' },
+  { value: 'minor7', label: 'Min7' },
+  { value: 'add9', label: 'Add9' },
 ];
 
 export function PadModule() {
@@ -27,14 +29,15 @@ export function PadModule() {
 
   const previewPad = () => {
     const chords: Record<ChordType, string[]> = {
-      minor: [`${key}3`, `${key}3`, `${key}3`].map((_, i) => {
-        const notes = ['C3', 'D#3', 'G3'];
-        return notes[i] || 'C3';
-      }),
+      minor: ['C3', 'D#3', 'G3'],
       major: ['C3', 'E3', 'G3'],
       sus4: ['C3', 'F3', 'G3'],
+      sus2: ['C3', 'D3', 'G3'],
       dim: ['C3', 'D#3', 'F#3'],
       aug: ['C3', 'E3', 'G#3'],
+      add9: ['C3', 'E3', 'G3', 'D4'],
+      minor7: ['C3', 'D#3', 'G3', 'A#3'],
+      major7: ['C3', 'E3', 'G3', 'B3'],
     };
     audioEngine.playPad(chords[pad.chord] || chords.minor, '2n');
   };

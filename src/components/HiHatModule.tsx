@@ -27,7 +27,7 @@ export function HiHatModule() {
   const previewHihat = () => {
     [0, 150, 300, 450].forEach((delay) => {
       setTimeout(() => {
-        audioEngine.playHihat(undefined, 0.6 + Math.random() * 0.2);
+        audioEngine.playHihatClosed(undefined, 0.6 + Math.random() * 0.2);
       }, delay);
     });
   };
