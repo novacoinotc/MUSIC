@@ -5,22 +5,47 @@ import type { KickParams, BassParams, MelodyParams, HiHatParams, PadParams, Note
 
 class AudioEngine {
   private initialized = false;
-  private kickSynth: Tone.MembraneSynth | null = null;
+
+  // Kick - Punchy but warm
+  private kickBody: Tone.MembraneSynth | null = null;
+  private kickClick: Tone.NoiseSynth | null = null;
+  private kickGain: Tone.Gain | null = null;
+
+  // Bass - Deep and warm with sub layer
   private bassSynth: Tone.MonoSynth | null = null;
+  private bassSubSynth: Tone.Synth | null = null;
+  private bassGain: Tone.Gain | null = null;
+  private bassFilter: Tone.Filter | null = null;
+
+  // Lead Melody - Emotional with rich effects
   private melodySynth: Tone.PolySynth | null = null;
+  private melodyGain: Tone.Gain | null = null;
+  private melodyFilter: Tone.Filter | null = null;
+  private melodyChorus: Tone.Chorus | null = null;
+  private melodyReverb: Tone.Reverb | null = null;
+  private melodyDelay: Tone.PingPongDelay | null = null;
+
+  // Arpeggiator - Signature melodic techno sound
+  private arpSynth: Tone.PolySynth | null = null;
+  private arpGain: Tone.Gain | null = null;
+  private arpFilter: Tone.Filter | null = null;
+  private arpDelay: Tone.PingPongDelay | null = null;
+  private arpReverb: Tone.Reverb | null = null;
+
+  // Hi-hat - Crisp
   private hihatSynth: Tone.NoiseSynth | null = null;
   private hihatFilter: Tone.Filter | null = null;
-  private padSynth: Tone.PolySynth | null = null;
-
-  private kickGain: Tone.Gain | null = null;
-  private bassGain: Tone.Gain | null = null;
-  private melodyGain: Tone.Gain | null = null;
   private hihatGain: Tone.Gain | null = null;
-  private padGain: Tone.Gain | null = null;
 
-  private melodyReverb: Tone.Reverb | null = null;
-  private melodyDelay: Tone.FeedbackDelay | null = null;
+  // Pad - Lush and atmospheric
+  private padSynth: Tone.PolySynth | null = null;
+  private padSynth2: Tone.PolySynth | null = null;
+  private padGain: Tone.Gain | null = null;
+  private padFilter: Tone.Filter | null = null;
+  private padChorus: Tone.Chorus | null = null;
   private padReverb: Tone.Reverb | null = null;
+
+  // Master
   private masterCompressor: Tone.Compressor | null = null;
   private masterLimiter: Tone.Limiter | null = null;
   private masterGain: Tone.Gain | null = null;
@@ -30,152 +55,210 @@ class AudioEngine {
   async init() {
     if (this.initialized) return;
 
-    await Tone.start();
+    try {
+      await Tone.start();
 
-    // Master chain
-    this.masterGain = new Tone.Gain(0.8);
-    this.masterCompressor = new Tone.Compressor({
-      threshold: -20,
-      ratio: 4,
-      attack: 0.003,
-      release: 0.25,
-    });
-    this.masterLimiter = new Tone.Limiter(-1);
+      // Master chain
+      this.masterGain = new Tone.Gain(0.75);
+      this.masterCompressor = new Tone.Compressor({
+        threshold: -15,
+        ratio: 3,
+        attack: 0.01,
+        release: 0.15,
+      });
+      this.masterLimiter = new Tone.Limiter(-0.5);
 
-    this.masterGain.chain(this.masterCompressor, this.masterLimiter, Tone.getDestination());
+      this.masterGain.chain(this.masterCompressor, this.masterLimiter, Tone.getDestination());
 
-    // Initialize recorder
-    this.recorder = new Tone.Recorder();
-    this.masterLimiter.connect(this.recorder);
+      // Recorder
+      this.recorder = new Tone.Recorder();
+      this.masterLimiter.connect(this.recorder);
 
-    // Kick
-    this.kickGain = new Tone.Gain(0.9).connect(this.masterGain);
-    this.kickSynth = new Tone.MembraneSynth({
-      pitchDecay: 0.05,
-      octaves: 6,
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.4,
-        sustain: 0.01,
-        release: 1.4,
-      },
-    }).connect(this.kickGain);
+      // ============ KICK - Deep and punchy ============
+      this.kickGain = new Tone.Gain(0.8).connect(this.masterGain);
 
-    // Bass
-    this.bassGain = new Tone.Gain(0.7).connect(this.masterGain);
-    this.bassSynth = new Tone.MonoSynth({
-      oscillator: { type: 'sawtooth' },
-      filter: {
-        Q: 4,
+      this.kickBody = new Tone.MembraneSynth({
+        pitchDecay: 0.06,
+        octaves: 4,
+        oscillator: { type: 'sine' },
+        envelope: {
+          attack: 0.002,
+          decay: 0.4,
+          sustain: 0,
+          release: 0.4,
+        },
+      }).connect(this.kickGain);
+
+      // Click layer for attack
+      const kickClickFilter = new Tone.Filter({ frequency: 3000, type: 'bandpass', Q: 2 }).connect(this.kickGain);
+      this.kickClick = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: {
+          attack: 0.001,
+          decay: 0.015,
+          sustain: 0,
+          release: 0.01,
+        },
+      }).connect(kickClickFilter);
+
+      // ============ BASS - Warm and deep ============
+      this.bassGain = new Tone.Gain(0.65).connect(this.masterGain);
+      this.bassFilter = new Tone.Filter({
+        frequency: 300,
         type: 'lowpass',
         rolloff: -24,
-      },
-      envelope: {
-        attack: 0.005,
-        decay: 0.2,
-        sustain: 0.6,
-        release: 0.1,
-      },
-      filterEnvelope: {
-        attack: 0.005,
-        decay: 0.2,
-        sustain: 0.5,
-        release: 0.2,
-        baseFrequency: 200,
-        octaves: 3,
-      },
-    }).connect(this.bassGain);
+        Q: 1,
+      }).connect(this.bassGain);
 
-    // Melody with effects
-    this.melodyReverb = new Tone.Reverb({ decay: 2, wet: 0.4 });
-    this.melodyDelay = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.3, wet: 0.3 });
-    this.melodyGain = new Tone.Gain(0.5);
-    this.melodyGain.chain(this.melodyDelay, this.melodyReverb, this.masterGain);
+      this.bassSynth = new Tone.MonoSynth({
+        oscillator: { type: 'sawtooth' },
+        filter: {
+          Q: 2,
+          type: 'lowpass',
+          rolloff: -24,
+        },
+        envelope: {
+          attack: 0.02,
+          decay: 0.25,
+          sustain: 0.35,
+          release: 0.15,
+        },
+        filterEnvelope: {
+          attack: 0.02,
+          decay: 0.3,
+          sustain: 0.2,
+          release: 0.2,
+          baseFrequency: 60,
+          octaves: 2,
+        },
+      }).connect(this.bassFilter);
 
-    this.melodySynth = new Tone.PolySynth(Tone.FMSynth, {
-      harmonicity: 3,
-      modulationIndex: 10,
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.01,
-        decay: 0.3,
-        sustain: 0.3,
-        release: 0.3,
-      },
-      modulation: { type: 'square' },
-      modulationEnvelope: {
-        attack: 0.5,
-        decay: 0,
-        sustain: 1,
-        release: 0.5,
-      },
-    }).connect(this.melodyGain);
+      // Sub bass - pure sine
+      this.bassSubSynth = new Tone.Synth({
+        oscillator: { type: 'sine' },
+        envelope: {
+          attack: 0.02,
+          decay: 0.3,
+          sustain: 0.4,
+          release: 0.2,
+        },
+      }).connect(this.bassGain);
 
-    // Hi-hat (using NoiseSynth with highpass filter)
-    this.hihatGain = new Tone.Gain(0.3).connect(this.masterGain);
-    this.hihatFilter = new Tone.Filter({
-      frequency: 5000,
-      type: 'highpass',
-    }).connect(this.hihatGain);
-    this.hihatSynth = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.1,
-        sustain: 0,
-        release: 0.01,
-      },
-    }).connect(this.hihatFilter);
+      // ============ LEAD MELODY - Emotional Afterlife style ============
+      this.melodyReverb = new Tone.Reverb({ decay: 4, wet: 0.4 }).connect(this.masterGain);
+      this.melodyDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.3, wet: 0.3 }).connect(this.melodyReverb);
+      this.melodyChorus = new Tone.Chorus({ frequency: 2, depth: 0.4, wet: 0.3 }).connect(this.melodyDelay);
+      this.melodyFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass', rolloff: -12 }).connect(this.melodyChorus);
+      this.melodyGain = new Tone.Gain(0.4).connect(this.melodyFilter);
 
-    // Pad with reverb
-    this.padReverb = new Tone.Reverb({ decay: 4, wet: 0.6 });
-    this.padGain = new Tone.Gain(0.4);
-    this.padGain.chain(this.padReverb, this.masterGain);
+      this.melodySynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: {
+          attack: 0.08,
+          decay: 0.5,
+          sustain: 0.25,
+          release: 1.2,
+        },
+      }).connect(this.melodyGain);
 
-    this.padSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.5,
-        decay: 0.3,
-        sustain: 0.8,
-        release: 1,
-      },
-    }).connect(this.padGain);
+      // ============ ARPEGGIATOR - Classic melodic techno ============
+      this.arpReverb = new Tone.Reverb({ decay: 5, wet: 0.45 }).connect(this.masterGain);
+      this.arpDelay = new Tone.PingPongDelay({ delayTime: '16n', feedback: 0.4, wet: 0.35 }).connect(this.arpReverb);
+      this.arpFilter = new Tone.Filter({ frequency: 3500, type: 'lowpass', rolloff: -12 }).connect(this.arpDelay);
+      this.arpGain = new Tone.Gain(0.25).connect(this.arpFilter);
 
-    this.initialized = true;
+      this.arpSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: {
+          attack: 0.005,
+          decay: 0.15,
+          sustain: 0.05,
+          release: 0.3,
+        },
+      }).connect(this.arpGain);
+
+      // ============ HI-HAT ============
+      this.hihatGain = new Tone.Gain(0.2).connect(this.masterGain);
+      this.hihatFilter = new Tone.Filter({
+        frequency: 8000,
+        type: 'highpass',
+      }).connect(this.hihatGain);
+
+      this.hihatSynth = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: {
+          attack: 0.001,
+          decay: 0.06,
+          sustain: 0,
+          release: 0.03,
+        },
+      }).connect(this.hihatFilter);
+
+      // ============ PAD - Lush atmospheric ============
+      this.padReverb = new Tone.Reverb({ decay: 7, wet: 0.55 }).connect(this.masterGain);
+      this.padChorus = new Tone.Chorus({ frequency: 0.3, depth: 0.8, wet: 0.5 }).connect(this.padReverb);
+      this.padFilter = new Tone.Filter({ frequency: 1800, type: 'lowpass', rolloff: -12 }).connect(this.padChorus);
+      this.padGain = new Tone.Gain(0.3).connect(this.padFilter);
+
+      // Main pad layer
+      this.padSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: {
+          attack: 2,
+          decay: 1.5,
+          sustain: 0.7,
+          release: 4,
+        },
+      }).connect(this.padGain);
+
+      // Second pad layer - slight detune for richness
+      this.padSynth2 = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: {
+          attack: 2.5,
+          decay: 1,
+          sustain: 0.6,
+          release: 4,
+        },
+      }).connect(this.padGain);
+
+      this.initialized = true;
+    } catch (error) {
+      console.error('Audio init error:', error);
+    }
   }
 
   setBPM(bpm: number) {
-    Tone.getTransport().bpm.value = bpm;
+    if (Tone.getTransport()) {
+      Tone.getTransport().bpm.value = bpm;
+    }
   }
 
   updateKick(params: KickParams) {
-    if (!this.kickSynth) return;
+    if (!this.kickBody) return;
 
-    this.kickSynth.set({
-      pitchDecay: 0.01 + (params.punch / 100) * 0.1,
-      octaves: 4 + (params.sub / 100) * 4,
+    this.kickBody.set({
+      pitchDecay: 0.03 + (params.punch / 100) * 0.08,
+      octaves: 3 + (params.sub / 100) * 3,
       envelope: {
-        decay: 0.1 + (params.decay / 100) * 0.6,
+        decay: 0.15 + (params.decay / 100) * 0.4,
       },
     });
 
     if (this.kickGain) {
-      this.kickGain.gain.value = 0.6 + (params.drive / 100) * 0.4;
+      this.kickGain.gain.value = 0.5 + (params.drive / 100) * 0.4;
     }
   }
 
   updateBass(params: BassParams) {
-    if (!this.bassSynth) return;
+    if (!this.bassSynth || !this.bassFilter) return;
+
+    this.bassFilter.frequency.value = Math.min(params.cutoff, 500);
+    this.bassFilter.Q.value = 0.5 + (params.resonance / 100) * 3;
 
     this.bassSynth.set({
-      filter: {
-        frequency: params.cutoff,
-        Q: 1 + (params.resonance / 100) * 10,
-      },
       envelope: {
-        attack: params.attack / 1000,
+        attack: Math.max(0.01, params.attack / 1000),
         decay: params.decay / 1000,
         sustain: params.sustain / 100,
         release: params.release / 1000,
@@ -184,15 +267,16 @@ class AudioEngine {
   }
 
   updateMelody(params: MelodyParams) {
-    if (!this.melodySynth || !this.melodyReverb || !this.melodyDelay) return;
+    if (!this.melodySynth || !this.melodyReverb || !this.melodyDelay || !this.melodyFilter) return;
 
     this.melodySynth.set({
       envelope: {
-        attack: params.attack / 1000,
+        attack: Math.max(0.02, params.attack / 1000),
         release: params.release / 1000,
       },
     });
 
+    this.melodyFilter.frequency.value = params.filterCutoff;
     this.melodyReverb.wet.value = params.reverbMix / 100;
     this.melodyDelay.wet.value = params.delayMix / 100;
   }
@@ -202,87 +286,123 @@ class AudioEngine {
 
     this.hihatSynth.set({
       envelope: {
-        decay: 0.02 + (params.decay / 100) * 0.3,
+        decay: 0.03 + (params.decay / 100) * 0.1,
       },
     });
 
-    // Adjust filter frequency based on pitch
-    this.hihatFilter.frequency.value = 3000 + (params.pitch / 100) * 8000;
+    this.hihatFilter.frequency.value = 6000 + (params.pitch / 100) * 6000;
 
     if (this.hihatGain) {
-      this.hihatGain.gain.value = (params.velocity / 100) * 0.4;
+      this.hihatGain.gain.value = (params.velocity / 100) * 0.25;
     }
   }
 
   updatePad(params: PadParams) {
-    if (!this.padSynth || !this.padReverb) return;
+    if (!this.padSynth || !this.padReverb || !this.padFilter) return;
 
     this.padSynth.set({
       envelope: {
-        attack: params.attack / 1000,
+        attack: Math.max(0.5, params.attack / 1000),
         release: params.release / 1000,
       },
     });
 
+    if (this.padSynth2) {
+      this.padSynth2.set({
+        envelope: {
+          attack: Math.max(0.8, params.attack / 1000),
+          release: params.release / 1000,
+        },
+      });
+    }
+
+    this.padFilter.frequency.value = params.filterCutoff;
     this.padReverb.wet.value = params.reverbMix / 100;
   }
 
   setMasterVolume(volume: number) {
     if (this.masterGain) {
-      this.masterGain.gain.value = volume / 100;
+      this.masterGain.gain.value = (volume / 100) * 0.8;
     }
   }
 
   playKick(time?: number) {
-    if (!this.kickSynth) return;
-    this.kickSynth.triggerAttackRelease('C1', '8n', time);
+    if (!this.kickBody) return;
+    const t = time ?? Tone.now();
+    this.kickBody.triggerAttackRelease('C1', '8n', t);
+    if (this.kickClick) {
+      this.kickClick.triggerAttackRelease('32n', t, 0.15);
+    }
   }
 
   playBass(note: string, duration: string, time?: number) {
     if (!this.bassSynth) return;
-    this.bassSynth.triggerAttackRelease(note, duration, time);
+    const t = time ?? Tone.now();
+    this.bassSynth.triggerAttackRelease(note, duration, t, 0.7);
+
+    // Sub layer one octave below
+    if (this.bassSubSynth) {
+      const subNote = note.replace(/(\d)/, (match) => String(Math.max(0, parseInt(match) - 1)));
+      this.bassSubSynth.triggerAttackRelease(subNote, duration, t, 0.4);
+    }
   }
 
   playMelody(note: string | string[], duration: string, time?: number, velocity?: number) {
     if (!this.melodySynth) return;
-    this.melodySynth.triggerAttackRelease(note, duration, time, velocity);
+    this.melodySynth.triggerAttackRelease(note, duration, time ?? Tone.now(), velocity ?? 0.6);
+  }
+
+  playArp(note: string, duration: string, time?: number, velocity?: number) {
+    if (!this.arpSynth) return;
+    this.arpSynth.triggerAttackRelease(note, duration, time ?? Tone.now(), velocity ?? 0.4);
   }
 
   playHihat(time?: number, velocity?: number) {
     if (!this.hihatSynth) return;
-    this.hihatSynth.triggerAttackRelease('16n', time);
+    this.hihatSynth.triggerAttackRelease('16n', time ?? Tone.now(), velocity ?? 0.4);
   }
 
   playPad(notes: string[], duration: string, time?: number) {
     if (!this.padSynth) return;
-    this.padSynth.triggerAttackRelease(notes, duration, time);
+    const t = time ?? Tone.now();
+    this.padSynth.triggerAttackRelease(notes, duration, t, 0.35);
+
+    // Second layer with slight timing offset for richness
+    if (this.padSynth2) {
+      this.padSynth2.triggerAttackRelease(notes, duration, t + 0.05, 0.25);
+    }
   }
 
   schedulePattern(
     pattern: NoteEvent[],
-    instrument: 'kick' | 'bass' | 'melody' | 'hihat' | 'pad',
+    instrument: 'kick' | 'bass' | 'melody' | 'arp' | 'hihat' | 'pad',
     startTime: number = 0
   ) {
     pattern.forEach((event) => {
       const time = Tone.Time(event.time).toSeconds() + startTime;
 
-      switch (instrument) {
-        case 'kick':
-          this.playKick(time);
-          break;
-        case 'bass':
-          this.playBass(event.note, event.duration, time);
-          break;
-        case 'melody':
-          this.playMelody(event.note, event.duration, time, event.velocity);
-          break;
-        case 'hihat':
-          this.playHihat(time, event.velocity);
-          break;
-        case 'pad':
-          this.playPad([event.note], event.duration, time);
-          break;
-      }
+      Tone.getTransport().schedule((t) => {
+        switch (instrument) {
+          case 'kick':
+            this.playKick(t);
+            break;
+          case 'bass':
+            this.playBass(event.note, event.duration, t);
+            break;
+          case 'melody':
+            this.playMelody(event.note, event.duration, t, event.velocity);
+            break;
+          case 'arp':
+            this.playArp(event.note, event.duration, t, event.velocity);
+            break;
+          case 'hihat':
+            this.playHihat(t, event.velocity);
+            break;
+          case 'pad':
+            this.playPad([event.note], event.duration, t);
+            break;
+        }
+      }, time);
     });
   }
 
@@ -293,6 +413,7 @@ class AudioEngine {
   stop() {
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
+    Tone.getTransport().cancel();
   }
 
   pause() {
@@ -315,19 +436,31 @@ class AudioEngine {
   }
 
   dispose() {
-    this.kickSynth?.dispose();
-    this.bassSynth?.dispose();
-    this.melodySynth?.dispose();
-    this.hihatSynth?.dispose();
-    this.hihatFilter?.dispose();
-    this.padSynth?.dispose();
-    this.melodyReverb?.dispose();
-    this.melodyDelay?.dispose();
-    this.padReverb?.dispose();
-    this.masterCompressor?.dispose();
-    this.masterLimiter?.dispose();
-    this.masterGain?.dispose();
-    this.recorder?.dispose();
+    try {
+      Tone.getTransport().cancel();
+      this.kickBody?.dispose();
+      this.kickClick?.dispose();
+      this.bassSynth?.dispose();
+      this.bassSubSynth?.dispose();
+      this.melodySynth?.dispose();
+      this.arpSynth?.dispose();
+      this.hihatSynth?.dispose();
+      this.padSynth?.dispose();
+      this.padSynth2?.dispose();
+      this.melodyReverb?.dispose();
+      this.melodyDelay?.dispose();
+      this.melodyChorus?.dispose();
+      this.arpReverb?.dispose();
+      this.arpDelay?.dispose();
+      this.padReverb?.dispose();
+      this.padChorus?.dispose();
+      this.masterCompressor?.dispose();
+      this.masterLimiter?.dispose();
+      this.masterGain?.dispose();
+      this.recorder?.dispose();
+    } catch (e) {
+      // Ignore dispose errors
+    }
     this.initialized = false;
   }
 }
