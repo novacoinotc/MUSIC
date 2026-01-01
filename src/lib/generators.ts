@@ -53,7 +53,7 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-// Generate kick pattern for one bar
+// Generate kick pattern - Deep house/techno style
 export function generateKickPattern(
   bars: number = 1,
   intensity: number = 100,
@@ -63,10 +63,10 @@ export function generateKickPattern(
   const events: NoteEvent[] = [];
 
   for (let bar = 0; bar < bars; bar++) {
-    // Basic 4-on-the-floor pattern
+    // 4-on-the-floor
     for (let beat = 0; beat < 4; beat++) {
-      // Skip some kicks at lower intensity
-      if (intensity < 100 && random() > intensity / 100 && beat !== 0) {
+      // At low intensity, skip some kicks (but always keep beat 0)
+      if (intensity < 50 && beat !== 0 && random() > 0.6) {
         continue;
       }
 
@@ -74,18 +74,7 @@ export function generateKickPattern(
         note: 'C1',
         time: `${bar}:${beat}:0`,
         duration: '8n',
-        velocity: 0.8 + random() * 0.2,
-      });
-    }
-
-    // Add some variation at higher intensities
-    if (intensity > 70 && random() > 0.7) {
-      const extraBeat = Math.floor(random() * 4);
-      events.push({
-        note: 'C1',
-        time: `${bar}:${extraBeat}:2`,
-        duration: '16n',
-        velocity: 0.5 + random() * 0.3,
+        velocity: beat === 0 ? 0.9 : 0.75 + random() * 0.15,
       });
     }
   }
@@ -93,7 +82,7 @@ export function generateKickPattern(
   return events;
 }
 
-// Generate bassline pattern
+// Generate bassline - Deep, groovy, melodic
 export function generateBassPattern(
   bars: number = 1,
   root: string = 'A',
@@ -107,52 +96,51 @@ export function generateBassPattern(
   const octave = 1 + params.octave;
   const scaleNotes = getScaleNotes(root, scale, octave);
 
-  // Different bass patterns based on intensity
-  const patterns = [
-    // Simple root pattern
-    [0, 0, 0, 0],
-    // Root and fifth
-    [0, 0, 4, 0],
-    // Walking bass
-    [0, 2, 3, 4],
-    // Syncopated
-    [0, 0, 0, 3],
+  // Melodic bass patterns - more musical movement
+  const bassPatterns = [
+    // Simple but effective
+    [[0, '4n'], [0, '4n'], [0, '4n'], [0, '4n']],
+    // With fifth
+    [[0, '4n'], [0, '8n'], [4, '8n'], [0, '4n']],
+    // Walking
+    [[0, '8n'], [2, '8n'], [3, '8n'], [4, '8n'], [3, '8n'], [2, '8n'], [0, '8n'], [0, '8n']],
+    // Syncopated groove
+    [[0, '8n.'], [0, '16n'], [3, '8n'], [0, '8n'], [4, '8n'], [0, '8n']],
   ];
 
-  const patternIndex = Math.min(Math.floor(intensity / 25), patterns.length - 1);
-  const pattern = patterns[patternIndex];
+  const patternIndex = Math.min(Math.floor(random() * bassPatterns.length), bassPatterns.length - 1);
+  const selectedPattern = bassPatterns[patternIndex];
 
   for (let bar = 0; bar < bars; bar++) {
-    for (let beat = 0; beat < 4; beat++) {
-      const noteIndex = pattern[beat] % scaleNotes.length;
-      const shouldPlay = random() < (intensity / 100);
+    let currentTime = 0;
 
-      if (shouldPlay || beat === 0) {
+    for (const [noteIdx, duration] of selectedPattern) {
+      if (random() < intensity / 100 || currentTime === 0) {
+        const noteIndex = (noteIdx as number) % scaleNotes.length;
+        const beat = Math.floor(currentTime / 4);
+        const sixteenth = currentTime % 4;
+
         events.push({
           note: scaleNotes[noteIndex],
-          time: `${bar}:${beat}:0`,
-          duration: '4n',
-          velocity: 0.7 + random() * 0.3,
+          time: `${bar}:${beat}:${sixteenth}`,
+          duration: duration as string,
+          velocity: 0.65 + random() * 0.2,
         });
       }
 
-      // Add 16th note variations at high intensity
-      if (intensity > 80 && random() > 0.6) {
-        const subNoteIndex = Math.floor(random() * 3);
-        events.push({
-          note: scaleNotes[subNoteIndex],
-          time: `${bar}:${beat}:2`,
-          duration: '16n',
-          velocity: 0.5 + random() * 0.2,
-        });
-      }
+      // Calculate next position based on duration
+      const durationMap: Record<string, number> = {
+        '16n': 1, '8n': 2, '8n.': 3, '4n': 4, '4n.': 6, '2n': 8
+      };
+      currentTime += durationMap[duration as string] || 2;
+      if (currentTime >= 16) break;
     }
   }
 
   return events;
 }
 
-// Generate melody pattern
+// Generate melody - Emotional, Afterlife style
 export function generateMelodyPattern(
   bars: number = 1,
   params: MelodyParams,
@@ -160,56 +148,60 @@ export function generateMelodyPattern(
 ): NoteEvent[] {
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
-  const scaleNotes = getScaleNotes(params.rootNote, params.scale, params.octave);
 
-  // Extended scale (include octave above)
-  const extendedScale = [
-    ...scaleNotes,
-    ...getScaleNotes(params.rootNote, params.scale, params.octave + 1).slice(0, 3),
+  // Use octave 3-4 for warmer melodies
+  const baseOctave = Math.max(3, params.octave - 1);
+  const scaleNotes = getScaleNotes(params.rootNote, params.scale, baseOctave);
+  const upperScaleNotes = getScaleNotes(params.rootNote, params.scale, baseOctave + 1);
+  const allNotes = [...scaleNotes, ...upperScaleNotes.slice(0, 4)];
+
+  // Emotional melodic phrases - longer notes, more musical
+  const phrases = [
+    // Ascending emotional phrase
+    [0, 2, 4, 5, 4, 2],
+    // Descending melancholic
+    [7, 5, 4, 2, 0],
+    // Question-answer
+    [0, 2, 4, 2, 4, 5, 4],
+    // Simple but beautiful
+    [4, 5, 7, 5, 4, 2, 0],
+    // Climactic
+    [0, 4, 7, 9, 7, 4],
   ];
 
-  const noteDensity = Math.floor((params.density / 100) * 16); // Max 16 notes per bar
+  const phraseIndex = Math.floor(random() * phrases.length);
+  const phrase = phrases[phraseIndex];
+
+  // Calculate notes per bar based on density
+  const notesPerBar = Math.max(2, Math.floor((params.density / 100) * 6));
 
   for (let bar = 0; bar < bars; bar++) {
-    let lastNoteIndex = Math.floor(random() * scaleNotes.length);
+    const barPhrase = random() > 0.3 ? phrase : phrases[Math.floor(random() * phrases.length)];
 
-    for (let i = 0; i < noteDensity; i++) {
-      // Determine note position
-      const subdivision = 16; // 16th notes
-      const position = Math.floor(random() * subdivision);
+    for (let i = 0; i < Math.min(notesPerBar, barPhrase.length); i++) {
+      const noteIndex = barPhrase[i] % allNotes.length;
+
+      // Spread notes across the bar with some variation
+      const basePosition = Math.floor((i / notesPerBar) * 16);
+      const variation = params.variation > 50 ? Math.floor(random() * 2) : 0;
+      const position = Math.min(15, basePosition + variation);
+
       const beat = Math.floor(position / 4);
       const sixteenth = position % 4;
 
-      // Apply variation - step up/down or jump
-      let noteJump = 0;
-      if (random() > params.variation / 100) {
-        // Melodic movement (step-wise)
-        noteJump = random() > 0.5 ? 1 : -1;
-      } else {
-        // Larger jump
-        noteJump = Math.floor(random() * 5) - 2;
-      }
-
-      lastNoteIndex = Math.max(0, Math.min(extendedScale.length - 1, lastNoteIndex + noteJump));
-
-      // Arpeggiation influence
-      if (params.arpSpeed > 50) {
-        lastNoteIndex = (lastNoteIndex + Math.floor(i / 2)) % extendedScale.length;
-      }
-
-      const durations = ['16n', '8n', '8n', '4n'];
+      // Longer, more emotional note durations
+      const durations = ['4n', '4n.', '2n', '8n.'];
       const durationIndex = Math.floor(random() * durations.length);
 
       events.push({
-        note: extendedScale[lastNoteIndex],
+        note: allNotes[noteIndex],
         time: `${bar}:${beat}:${sixteenth}`,
         duration: durations[durationIndex],
-        velocity: 0.5 + random() * 0.4,
+        velocity: 0.5 + random() * 0.25,
       });
     }
   }
 
-  // Sort by time for proper playback
   return events.sort((a, b) => {
     const parseTime = (t: string) => {
       const [bar, beat, sixteenth] = t.split(':').map(Number);
@@ -217,6 +209,61 @@ export function generateMelodyPattern(
     };
     return parseTime(a.time) - parseTime(b.time);
   });
+}
+
+// Generate arpeggio pattern - Signature melodic techno sound
+export function generateArpPattern(
+  bars: number = 1,
+  root: string = 'A',
+  scale: Scale = 'minor',
+  params: MelodyParams,
+  seed: number = Date.now()
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  // Higher octave for arps
+  const octave = Math.max(4, params.octave);
+  const scaleNotes = getScaleNotes(root, scale, octave);
+  const upperNotes = getScaleNotes(root, scale, octave + 1);
+  const allNotes = [...scaleNotes, ...upperNotes.slice(0, 3)];
+
+  // Arp patterns (note indices in the scale)
+  const arpPatterns = [
+    [0, 2, 4, 7, 4, 2], // Up-down triad
+    [0, 4, 7, 4], // Simple triad
+    [0, 2, 4, 2, 0, 2, 4, 7], // Extended
+    [7, 4, 2, 0, 2, 4], // Descending
+    [0, 4, 2, 7, 4, 0], // Broken
+  ];
+
+  const patternIndex = Math.floor(random() * arpPatterns.length);
+  const pattern = arpPatterns[patternIndex];
+
+  // Speed based on arpSpeed parameter
+  const notesPerBar = Math.floor(4 + (params.arpSpeed / 100) * 12);
+  const stepSize = Math.floor(16 / notesPerBar);
+
+  for (let bar = 0; bar < bars; bar++) {
+    for (let i = 0; i < notesPerBar; i++) {
+      const noteIndex = pattern[i % pattern.length] % allNotes.length;
+      const position = i * stepSize;
+      const beat = Math.floor(position / 4);
+      const sixteenth = position % 4;
+
+      // Slight velocity variation for groove
+      const velocityBase = (i % 4 === 0) ? 0.5 : 0.35;
+
+      events.push({
+        note: allNotes[noteIndex],
+        time: `${bar}:${beat}:${sixteenth}`,
+        duration: '16n',
+        velocity: velocityBase + random() * 0.15,
+      });
+    }
+  }
+
+  return events;
 }
 
 // Generate hi-hat pattern
@@ -230,31 +277,30 @@ export function generateHihatPattern(
   const events: NoteEvent[] = [];
 
   const patterns: Record<typeof params.pattern, number[]> = {
-    straight: [0, 2, 4, 6, 8, 10, 12, 14], // Every 8th note
-    offbeat: [2, 6, 10, 14], // Off-beat only
-    shuffle: [0, 3, 4, 7, 8, 11, 12, 15], // Shuffle feel
-    complex: [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15], // Busy pattern
+    straight: [2, 6, 10, 14], // Offbeat 8ths - classic house
+    offbeat: [2, 6, 10, 14], // Same for offbeat
+    shuffle: [2, 5, 6, 10, 13, 14], // Swing feel
+    complex: [0, 2, 4, 6, 8, 10, 12, 14], // 8th notes
   };
 
   const selectedPattern = patterns[params.pattern];
 
   for (let bar = 0; bar < bars; bar++) {
     for (const pos of selectedPattern) {
-      // Skip some hits based on intensity
-      if (random() > intensity / 100) continue;
+      if (random() > (intensity / 100) * 1.2) continue;
 
       const beat = Math.floor(pos / 4);
       const sixteenth = pos % 4;
 
-      // Velocity variation
-      const isDownbeat = pos % 4 === 0;
-      const baseVelocity = isDownbeat ? 0.8 : 0.5;
+      // Groove: offbeats slightly louder
+      const isOffbeat = pos % 4 === 2;
+      const baseVelocity = isOffbeat ? 0.55 : 0.4;
 
       events.push({
         note: 'C5',
         time: `${bar}:${beat}:${sixteenth}`,
         duration: '32n',
-        velocity: (baseVelocity + random() * 0.2) * (params.velocity / 100),
+        velocity: (baseVelocity + random() * 0.15) * (params.velocity / 100),
       });
     }
   }
@@ -262,7 +308,7 @@ export function generateHihatPattern(
   return events;
 }
 
-// Generate pad chord pattern
+// Generate pad pattern - Lush chords
 export function generatePadPattern(
   bars: number = 1,
   root: string = 'A',
@@ -272,30 +318,42 @@ export function generatePadPattern(
 ): NoteEvent[] {
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
-  const scaleNotes = getScaleNotes(root, scale, 3); // Lower octave for pads
 
-  // Chord voicings based on scale
-  const chordVoicings: Record<typeof params.chord, number[]> = {
-    minor: [0, 2, 4], // Root, 3rd, 5th
-    major: [0, 2, 4],
-    sus4: [0, 3, 4],
-    dim: [0, 2, 4],
-    aug: [0, 2, 4],
-  };
+  // Lower octave for warm pads
+  const scaleNotes = getScaleNotes(root, scale, 2);
+  const upperNotes = getScaleNotes(root, scale, 3);
 
-  const voicing = chordVoicings[params.chord];
+  // Rich chord voicings
+  const chordProgressions = [
+    // i - VI - III - VII (classic minor)
+    [[0, 2, 4], [5, 0, 2], [2, 4, 6], [6, 1, 3]],
+    // i - iv - i - v
+    [[0, 2, 4], [3, 5, 0], [0, 2, 4], [4, 6, 1]],
+    // Sustained i chord with variations
+    [[0, 2, 4], [0, 2, 4], [0, 3, 4], [0, 2, 4]],
+  ];
 
-  // Pads change less frequently
-  for (let bar = 0; bar < bars; bar += 2) {
-    const chordRoot = Math.floor(random() * 3); // Use first few notes of scale
+  const progressionIndex = Math.floor(random() * chordProgressions.length);
+  const progression = chordProgressions[progressionIndex];
 
-    voicing.forEach((interval) => {
-      const noteIndex = (chordRoot + interval) % scaleNotes.length;
+  // One chord every 2 bars for lush sustained pads
+  const barsPerChord = Math.max(2, Math.floor(bars / progression.length));
+
+  for (let i = 0; i < progression.length && i * barsPerChord < bars; i++) {
+    const chord = progression[i];
+    const barStart = i * barsPerChord;
+
+    // Add each note of the chord
+    chord.forEach((noteIdx, voiceIdx) => {
+      // Use both octaves for richness
+      const notes = voiceIdx < 2 ? scaleNotes : upperNotes;
+      const note = notes[noteIdx % notes.length];
+
       events.push({
-        note: scaleNotes[noteIndex],
-        time: `${bar}:0:0`,
-        duration: '1m', // Whole measure
-        velocity: 0.4 + random() * 0.2,
+        note,
+        time: `${barStart}:0:0`,
+        duration: `${barsPerChord}m`,
+        velocity: 0.3 + random() * 0.15,
       });
     });
   }
@@ -315,21 +373,26 @@ export function generateSectionPatterns(
   padParams: PadParams,
   seed: number = Date.now()
 ) {
+  const melodyWithRoot = { ...melodyParams, rootNote: root, scale };
+
   return {
     kick: section.hasKick
       ? generateKickPattern(section.bars, section.intensity, seed)
       : [],
     bass: section.hasBass
-      ? generateBassPattern(section.bars, root, scale, bassParams, section.intensity, seed + 1)
+      ? generateBassPattern(section.bars, root, scale, bassParams, section.intensity, seed + 1000)
       : [],
     melody: section.hasMelody
-      ? generateMelodyPattern(section.bars, { ...melodyParams, rootNote: root, scale }, seed + 2)
+      ? generateMelodyPattern(section.bars, melodyWithRoot, seed + 2000)
+      : [],
+    arp: section.hasMelody && section.intensity > 60
+      ? generateArpPattern(section.bars, root, scale, melodyWithRoot, seed + 3000)
       : [],
     hihat: section.hasHihat
-      ? generateHihatPattern(section.bars, hihatParams, section.intensity, seed + 3)
+      ? generateHihatPattern(section.bars, hihatParams, section.intensity, seed + 4000)
       : [],
     pad: section.hasPad
-      ? generatePadPattern(section.bars, root, scale, padParams, seed + 4)
+      ? generatePadPattern(section.bars, root, scale, padParams, seed + 5000)
       : [],
   };
 }

@@ -113,6 +113,13 @@ export function Transport() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  // Stop handler - defined first to avoid reference issues
+  const handleStop = useCallback(() => {
+    audioEngine.stop();
+    setIsPlaying(false);
+    setCurrentTime('0:0:0');
+  }, []);
+
   // Schedule all patterns to the transport
   const scheduleAllPatterns = useCallback((currentSeed: number) => {
     // Cancel all scheduled events
@@ -137,6 +144,7 @@ export function Transport() {
       audioEngine.schedulePattern(patterns.kick, 'kick', startTime);
       audioEngine.schedulePattern(patterns.bass, 'bass', startTime);
       audioEngine.schedulePattern(patterns.melody, 'melody', startTime);
+      audioEngine.schedulePattern(patterns.arp, 'arp', startTime);
       audioEngine.schedulePattern(patterns.hihat, 'hihat', startTime);
       audioEngine.schedulePattern(patterns.pad, 'pad', startTime);
 
@@ -146,7 +154,9 @@ export function Transport() {
     // Schedule stop at end
     const totalBars = sections.reduce((sum, s) => sum + s.bars, 0);
     Tone.getTransport().schedule(() => {
-      handleStop();
+      audioEngine.stop();
+      setIsPlaying(false);
+      setCurrentTime('0:0:0');
     }, `${totalBars}:0:0`);
   }, [sections, key, scale, kick, bass, melody, hihat, pad]);
 
@@ -178,12 +188,6 @@ export function Transport() {
 
     audioEngine.play();
     setIsPlaying(true);
-  };
-
-  const handleStop = () => {
-    audioEngine.stop();
-    setIsPlaying(false);
-    setCurrentTime('0:0:0');
   };
 
   const handleRegenerate = async () => {
