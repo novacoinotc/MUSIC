@@ -51,6 +51,7 @@ export function Transport() {
   const acid = useTrackStore((s) => s.acid);
   const perc = useTrackStore((s) => s.perc);
   const arp = useTrackStore((s) => s.arp);
+  const vocal = useTrackStore((s) => s.vocal);
 
   // Actions
   const setBPM = useTrackStore((s) => s.setBPM);
@@ -82,9 +83,10 @@ export function Transport() {
     audioEngine.updateStrings(strings);
     audioEngine.updateAcid(acid);
     audioEngine.updatePerc(perc);
+    audioEngine.updateVocal(vocal);
 
     setIsInitialized(true);
-  }, [isInitialized, bpm, masterVolume, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc]);
+  }, [isInitialized, bpm, masterVolume, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, vocal]);
 
   // Sync settings
   useEffect(() => {
@@ -115,6 +117,7 @@ export function Transport() {
   useEffect(() => { if (isInitialized) audioEngine.updateStrings(strings); }, [strings, isInitialized]);
   useEffect(() => { if (isInitialized) audioEngine.updateAcid(acid); }, [acid, isInitialized]);
   useEffect(() => { if (isInitialized) audioEngine.updatePerc(perc); }, [perc, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateVocal(vocal); }, [vocal, isInitialized]);
 
   // Time display update
   useEffect(() => {
@@ -158,6 +161,7 @@ export function Transport() {
         acid,
         perc,
         arp,
+        vocal,
         currentSeed + index
       );
 
@@ -177,6 +181,7 @@ export function Transport() {
       audioEngine.schedulePattern(patterns.hihat, 'hihat', startTime);
       audioEngine.schedulePattern(patterns.openhat, 'openhat', startTime);
       audioEngine.schedulePattern(patterns.perc, 'perc', startTime);
+      audioEngine.schedulePattern(patterns.vocal, 'vocal', startTime);
 
       startBar += section.bars;
     });
@@ -188,7 +193,7 @@ export function Transport() {
       setIsPlaying(false);
       setCurrentTime('0:0:0');
     }, `${totalBars}:0:0`);
-  }, [sections, key, scale, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, arp]);
+  }, [sections, key, scale, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, arp, vocal]);
 
   // Reschedule patterns when parameters change while playing
   useEffect(() => {

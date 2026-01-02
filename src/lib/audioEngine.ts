@@ -4,11 +4,11 @@ import * as Tone from 'tone';
 import type {
   KickParams, BassParams, MelodyParams, HiHatParams, PadParams,
   PluckParams, StabParams, PianoParams, StringsParams, AcidParams,
-  PercParams, ArpParams, NoteEvent, TechnoStyle, GrooveType
+  PercParams, ArpParams, VocalParams, NoteEvent, TechnoStyle, GrooveType
 } from '@/types';
 
 type InstrumentType = 'kick' | 'bass' | 'melody' | 'arp' | 'hihat' | 'pad' |
-  'pluck' | 'stab' | 'piano' | 'strings' | 'acid' | 'perc' | 'openhat';
+  'pluck' | 'stab' | 'piano' | 'strings' | 'acid' | 'perc' | 'openhat' | 'vocal';
 
 class AudioEngine {
   private initialized = false;
@@ -95,6 +95,19 @@ class AudioEngine {
   private tomSynth: Tone.MembraneSynth | null = null;
   private shakerSynth: Tone.NoiseSynth | null = null;
   private percGain: Tone.Gain | null = null;
+
+  // ========== VOCALS (Formant Synthesis) ==========
+  private vocalSynth1: Tone.PolySynth | null = null;
+  private vocalSynth2: Tone.PolySynth | null = null;
+  private vocalSynth3: Tone.PolySynth | null = null;
+  private vocalFilter1: Tone.Filter | null = null;
+  private vocalFilter2: Tone.Filter | null = null;
+  private vocalFilter3: Tone.Filter | null = null;
+  private vocalChorus: Tone.Chorus | null = null;
+  private vocalReverb: Tone.Reverb | null = null;
+  private vocalDelay: Tone.PingPongDelay | null = null;
+  private vocalGain: Tone.Gain | null = null;
+  private vocalType: 'ooh' | 'aah' | 'eeh' | 'choir' = 'ooh';
 
   // ========== MASTER CHAIN ==========
   private masterCompressor: Tone.Compressor | null = null;
@@ -305,6 +318,34 @@ class AudioEngine {
         noise: { type: 'pink' },
         envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.02 },
       }).connect(shakerFilter);
+
+      // ===== VOCALS (Formant Synthesis for ooh/aah sounds) =====
+      // Using 3 bandpass-filtered oscillators to simulate vocal formants
+      this.vocalReverb = new Tone.Reverb({ decay: 4.5, wet: 0.5 }).connect(this.masterGain);
+      this.vocalDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.2, wet: 0.25 }).connect(this.vocalReverb);
+      this.vocalChorus = new Tone.Chorus({ frequency: 2, depth: 0.5, wet: 0.4 }).connect(this.vocalDelay);
+      this.vocalGain = new Tone.Gain(0.28).connect(this.vocalChorus);
+
+      // Formant 1 (low)
+      this.vocalFilter1 = new Tone.Filter({ frequency: 500, type: 'bandpass', Q: 5 }).connect(this.vocalGain);
+      this.vocalSynth1 = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.3, decay: 0.5, sustain: 0.6, release: 1.5 },
+      }).connect(this.vocalFilter1);
+
+      // Formant 2 (mid)
+      this.vocalFilter2 = new Tone.Filter({ frequency: 1000, type: 'bandpass', Q: 4 }).connect(this.vocalGain);
+      this.vocalSynth2 = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.35, decay: 0.6, sustain: 0.5, release: 1.8 },
+      }).connect(this.vocalFilter2);
+
+      // Formant 3 (high)
+      this.vocalFilter3 = new Tone.Filter({ frequency: 2800, type: 'bandpass', Q: 6 }).connect(this.vocalGain);
+      this.vocalSynth3 = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.4, decay: 0.4, sustain: 0.4, release: 2 },
+      }).connect(this.vocalFilter3);
 
       this.initialized = true;
     } catch (error) {
@@ -549,6 +590,63 @@ class AudioEngine {
     }
   }
 
+  updateVocal(params: VocalParams) {
+    if (!this.vocalFilter1 || !this.vocalFilter2 || !this.vocalFilter3) return;
+
+    this.vocalType = params.type;
+
+    // Formant frequencies for different vowels (approximations)
+    // These simulate different vocal sounds
+    const formants: Record<typeof params.type, [number, number, number]> = {
+      ooh: [350, 850, 2500],     // "oo" sound - rounder, darker
+      aah: [700, 1200, 2800],    // "ah" sound - open, warm
+      eeh: [400, 2200, 3000],    // "ee" sound - brighter
+      choir: [500, 1000, 2700],  // Choir pad - blend
+    };
+
+    const [f1, f2, f3] = formants[params.type];
+
+    // Apply formant frequencies with brightness adjustment
+    const brightnessOffset = (params.brightness - 50) * 20;
+    this.vocalFilter1.frequency.value = f1 + brightnessOffset * 0.5;
+    this.vocalFilter2.frequency.value = f2 + brightnessOffset;
+    this.vocalFilter3.frequency.value = f3 + brightnessOffset;
+
+    // Gender affects the resonance and pitch range
+    // Lower Q for male (broader formants), higher Q for female (sharper)
+    const qMultiplier = params.gender === 'female' ? 1.3 : params.gender === 'male' ? 0.7 : 1;
+    this.vocalFilter1.Q.value = 5 * qMultiplier;
+    this.vocalFilter2.Q.value = 4 * qMultiplier;
+    this.vocalFilter3.Q.value = 6 * qMultiplier;
+
+    // Update envelope for breathiness
+    const attackTime = 0.2 + (params.attack / 1000);
+    const releaseTime = 1 + (params.release / 500);
+
+    if (this.vocalSynth1) {
+      this.vocalSynth1.set({
+        envelope: { attack: attackTime, release: releaseTime },
+      });
+    }
+    if (this.vocalSynth2) {
+      this.vocalSynth2.set({
+        envelope: { attack: attackTime * 1.1, release: releaseTime * 1.1 },
+      });
+    }
+    if (this.vocalSynth3) {
+      this.vocalSynth3.set({
+        envelope: { attack: attackTime * 1.2, release: releaseTime * 0.9 },
+      });
+    }
+
+    if (this.vocalReverb) {
+      this.vocalReverb.wet.value = params.reverbMix / 100;
+    }
+    if (this.vocalGain) {
+      this.vocalGain.gain.value = 0.2 + (params.mix / 100) * 0.15;
+    }
+  }
+
   setMasterVolume(volume: number) {
     if (this.masterGain) {
       this.masterGain.gain.value = (volume / 100) * 0.75;
@@ -665,6 +763,18 @@ class AudioEngine {
     this.shakerSynth.triggerAttackRelease('32n', time ?? Tone.now(), velocity ?? 0.3);
   }
 
+  playVocal(notes: string | string[], duration: string, time?: number, velocity?: number) {
+    if (!this.vocalSynth1 || !this.vocalSynth2 || !this.vocalSynth3) return;
+    const t = time ?? Tone.now();
+    const v = velocity ?? 0.35;
+    const notesArr = Array.isArray(notes) ? notes : [notes];
+
+    // All three formant layers play the same notes
+    this.vocalSynth1.triggerAttackRelease(notesArr, duration, t, v);
+    this.vocalSynth2.triggerAttackRelease(notesArr, duration, t + 0.02, v * 0.8);
+    this.vocalSynth3.triggerAttackRelease(notesArr, duration, t + 0.04, v * 0.5);
+  }
+
   // ========== PATTERN SCHEDULING ==========
 
   schedulePattern(pattern: NoteEvent[], instrument: InstrumentType, startTime: number = 0) {
@@ -715,6 +825,9 @@ class AudioEngine {
             else if (event.note === 'rim') this.playRim(t, event.velocity);
             else if (event.note === 'shaker') this.playShaker(t, event.velocity);
             else this.playTom(event.note, t, event.velocity);
+            break;
+          case 'vocal':
+            this.playVocal(event.note, event.duration, t, event.velocity);
             break;
         }
       }, time);
@@ -768,6 +881,8 @@ class AudioEngine {
         this.padSynth, this.padSynth2, this.padFilter, this.padChorus, this.padReverb, this.padGain,
         this.hihatClosed, this.hihatOpen, this.hihatFilter, this.hihatGain,
         this.clapSynth, this.clapReverb, this.rimSynth, this.tomSynth, this.shakerSynth, this.percGain,
+        this.vocalSynth1, this.vocalSynth2, this.vocalSynth3, this.vocalFilter1, this.vocalFilter2, this.vocalFilter3,
+        this.vocalChorus, this.vocalReverb, this.vocalDelay, this.vocalGain,
         this.masterCompressor, this.masterLimiter, this.masterGain, this.recorder,
       ].forEach(node => node?.dispose());
     } catch (e) {
