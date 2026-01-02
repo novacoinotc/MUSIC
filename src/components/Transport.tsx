@@ -66,7 +66,11 @@ export function Transport() {
   const reset = useTrackStore((s) => s.reset);
 
   const initAudio = useCallback(async () => {
-    if (isInitialized) return;
+    if (isInitialized) {
+      console.log('[Transport] initAudio: Already initialized, skipping');
+      return;
+    }
+    console.log('[Transport] initAudio: Initializing audio engine...');
     await audioEngine.init();
     audioEngine.setBPM(bpm);
     audioEngine.setMasterVolume(masterVolume);
@@ -87,6 +91,7 @@ export function Transport() {
     audioEngine.updatePerc(perc);
     audioEngine.updateVocal(vocal);
 
+    console.log('[Transport] initAudio: Audio engine initialized');
     setIsInitialized(true);
   }, [isInitialized, bpm, masterVolume, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, vocal]);
 
@@ -141,9 +146,13 @@ export function Transport() {
 
   // Schedule all patterns to the transport
   const scheduleAllPatterns = useCallback((currentSeed: number) => {
+    console.log('[Transport] scheduleAllPatterns: Starting with seed', currentSeed);
+    console.log('[Transport] scheduleAllPatterns: Total sections:', sections.length);
     Tone.getTransport().cancel();
 
     let startBar = 0;
+    let totalKickNotes = 0;
+    let totalBassNotes = 0;
     sections.forEach((section, index) => {
       const patterns = generateSectionPatterns(
         section,
@@ -169,6 +178,21 @@ export function Transport() {
         currentSeed + index
       );
 
+      // Debug: Log pattern counts
+      console.log(`[Transport] Section ${index} (${section.type}):`, {
+        hasKick: section.hasKick,
+        hasBass: section.hasBass,
+        hasMelody: section.hasMelody,
+        hasHihat: section.hasHihat,
+        kickNotes: patterns.kick.length,
+        bassNotes: patterns.bass.length,
+        melodyNotes: patterns.melody.length,
+        hihatNotes: patterns.hihat.length,
+      });
+
+      totalKickNotes += patterns.kick.length;
+      totalBassNotes += patterns.bass.length;
+
       const startTime = Tone.Time(`${startBar}:0:0`).toSeconds();
 
       // Schedule all instruments
@@ -192,6 +216,11 @@ export function Transport() {
 
     // Schedule stop at end
     const totalBars = sections.reduce((sum, s) => sum + s.bars, 0);
+    console.log('[Transport] scheduleAllPatterns: Summary -', {
+      totalBars,
+      totalKickNotes,
+      totalBassNotes,
+    });
     Tone.getTransport().schedule(() => {
       audioEngine.stop();
       setIsPlaying(false);
@@ -210,12 +239,17 @@ export function Transport() {
   }, [key, scale, secondaryScale, chordProgression, style, groove, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
 
   const handlePlay = async () => {
+    console.log('[Transport] handlePlay: Starting...');
+    console.log('[Transport] handlePlay: sections count =', sections.length);
     await initAudio();
     const newSeed = Date.now();
     setSeed(newSeed);
+    console.log('[Transport] handlePlay: Scheduling patterns with seed', newSeed);
     scheduleAllPatterns(newSeed);
+    console.log('[Transport] handlePlay: Calling audioEngine.play()');
     audioEngine.play();
     setIsPlaying(true);
+    console.log('[Transport] handlePlay: Done, isPlaying = true');
   };
 
   const handleRegenerate = async () => {

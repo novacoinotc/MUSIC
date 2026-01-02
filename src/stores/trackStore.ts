@@ -50,6 +50,65 @@ const CHORD_PROGRESSIONS: ChordProgression[] = [
   'i-iv-VII-III',   // Dark melodic
 ];
 
+// ============ PRODUCER BLUEPRINT TYPES ============
+// High-level musical decisions from AI producer, not DSP parameters
+
+export interface SectionBlueprint {
+  type: 'intro' | 'buildup' | 'tension' | 'drop' | 'breakdown' | 'release' | 'outro';
+  bars: number;
+  energy: number; // 1-10
+  purpose: string;
+  active_instruments: string[];
+  tension_source: string;
+  release_moment: string;
+}
+
+export interface InstrumentRole {
+  role: 'protagonist' | 'texture' | 'rhythm' | 'accent' | 'atmosphere';
+  character: string;
+  presence: 'dominant' | 'supportive' | 'subtle';
+  entry_section: number;
+  exit_section: number;
+}
+
+export interface ProducerBlueprint {
+  bpm: number;
+  key: string;
+  scale: string;
+  vibe: string[];
+  narrative: string;
+  energy_curve: number[];
+  sections: SectionBlueprint[];
+  instruments: {
+    kick: InstrumentRole;
+    bass: InstrumentRole;
+    pad: InstrumentRole;
+    lead: InstrumentRole;
+    hihat: InstrumentRole;
+  };
+  production_notes: string[];
+}
+
+// Legacy blueprint type for backward compatibility
+export interface MusicBlueprint {
+  bpm: number;
+  key: string;
+  scale: string;
+  vibe: string[];
+  structure: Array<{
+    type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
+    bars: number;
+    intensity: number;
+  }>;
+  instruments: Record<string, Record<string, number>>;
+  patterns: Record<string, Array<{
+    time: string;
+    note: string;
+    duration: string;
+    velocity: number;
+  }>>;
+}
+
 interface TrackStore extends TrackState {
   // Setters
   setBPM: (bpm: number) => void;
@@ -87,8 +146,8 @@ interface TrackStore extends TrackState {
   // AI Composer integration
   applyComposerPlan: (plan: import('@/types/composer').ComposerPlan) => void;
 
-  // AI Blueprint integration (new GPT-5.2 format)
-  applyBlueprint: (blueprint: MusicBlueprint) => void;
+  // AI Blueprint integration (supports both Producer and Legacy formats)
+  applyBlueprint: (blueprint: ProducerBlueprint | MusicBlueprint) => void;
 
   // Random generation - MASSIVE variety
   randomizeAll: () => void;
@@ -99,26 +158,6 @@ interface TrackStore extends TrackState {
 
   // Reset
   reset: () => void;
-}
-
-// Music Blueprint types from GPT-5.2 Responses API
-interface MusicBlueprint {
-  bpm: number;
-  key: string;
-  scale: string;
-  vibe: string[];
-  structure: Array<{
-    type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
-    bars: number;
-    intensity: number;
-  }>;
-  instruments: Record<string, Record<string, number>>;
-  patterns: Record<string, Array<{
-    time: string;
-    note: string;
-    duration: string;
-    velocity: number;
-  }>>;
 }
 
 const DEFAULT_STATE: TrackState = {
@@ -903,9 +942,234 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
     }
   },
 
-  // Apply AI Blueprint from GPT-5.2 Responses API
-  applyBlueprint: (blueprint) => {
-    // Map scale string to Scale type
+  // ============ APPLY PRODUCER BLUEPRINT ============
+  // Translates high-level producer decisions into concrete DSP parameters
+  // The AI thinks like a producer; this function is the "sound engineer"
+  applyBlueprint: (blueprint: ProducerBlueprint | MusicBlueprint) => {
+    // Detect if this is the new ProducerBlueprint format
+    const isProducerFormat = 'narrative' in blueprint && 'energy_curve' in blueprint;
+
+    if (isProducerFormat) {
+      const pb = blueprint as ProducerBlueprint;
+      console.log('[TrackStore] Applying Producer Blueprint:', pb.narrative);
+
+      // ===== MAP SCALE =====
+      const mapScale = (s: string): Scale => {
+        const validScales: Scale[] = [
+          'minor', 'major', 'phrygian', 'harmonicMinor', 'melodicMinor',
+          'dorian', 'locrian', 'lydian', 'mixolydian', 'pentatonicMinor',
+          'pentatonicMajor', 'blues', 'wholeNote', 'chromatic', 'arabic', 'japanese',
+        ];
+        return validScales.includes(s as Scale) ? (s as Scale) : 'minor';
+      };
+
+      // ===== MAP VIBE TO STYLE =====
+      const mapVibeToStyle = (vibes: string[]): TechnoStyle => {
+        const vibeStr = vibes.join(' ').toLowerCase();
+        if (vibeStr.includes('dark') || vibeStr.includes('deep')) return 'dark';
+        if (vibeStr.includes('hypnotic') || vibeStr.includes('repetitive')) return 'hypnotic';
+        if (vibeStr.includes('melodic') || vibeStr.includes('emotional')) return 'melodic';
+        if (vibeStr.includes('progressive') || vibeStr.includes('journey')) return 'progressive';
+        if (vibeStr.includes('minimal')) return 'minimal';
+        return 'melodic';
+      };
+
+      // ===== TRANSLATE CHARACTER TO DSP =====
+      // This is the "sound engineer" interpreting the producer's vision
+      const characterToDSP = (character: string, presence: string) => {
+        const charLower = character.toLowerCase();
+        const isDominant = presence === 'dominant';
+        const isSubtle = presence === 'subtle';
+
+        // Base values
+        let brightness = 50;
+        let warmth = 50;
+        let space = 50;
+        let attack = 50;
+        let decay = 50;
+
+        // Character interpretation
+        if (charLower.includes('dark')) { brightness = 25; warmth = 70; }
+        if (charLower.includes('warm')) { brightness = 35; warmth = 80; }
+        if (charLower.includes('bright')) { brightness = 70; warmth = 40; }
+        if (charLower.includes('ethereal')) { space = 80; attack = 70; brightness = 40; }
+        if (charLower.includes('hypnotic')) { decay = 60; space = 50; }
+        if (charLower.includes('punchy')) { attack = 20; decay = 40; }
+        if (charLower.includes('deep')) { brightness = 30; warmth = 75; }
+        if (charLower.includes('subtle') || charLower.includes('ghostly')) { brightness = 35; space = 70; }
+        if (charLower.includes('emotive')) { space = 60; decay = 65; }
+        if (charLower.includes('restrained')) { brightness = 40; attack = 60; }
+        if (charLower.includes('distant')) { space = 85; brightness = 30; }
+
+        // Presence adjustments
+        if (isDominant) { brightness += 10; warmth += 5; }
+        if (isSubtle) { brightness -= 15; space += 10; }
+
+        return { brightness, warmth, space, attack, decay };
+      };
+
+      // ===== DETERMINE ACTIVE INSTRUMENTS PER SECTION =====
+      const getInstrumentFlags = (
+        sectionIndex: number,
+        activeInstruments: string[],
+        instruments: ProducerBlueprint['instruments']
+      ) => {
+        // Check if instrument should be active based on entry/exit and active_instruments
+        const isActive = (name: string, role: InstrumentRole) => {
+          const inRange = sectionIndex >= role.entry_section &&
+            (role.exit_section === -1 || sectionIndex <= role.exit_section);
+          const inList = activeInstruments.some(i =>
+            i.toLowerCase().includes(name) || name.includes(i.toLowerCase())
+          );
+          return inRange && inList;
+        };
+
+        return {
+          hasKick: isActive('kick', instruments.kick),
+          hasBass: isActive('bass', instruments.bass),
+          hasMelody: isActive('lead', instruments.lead),
+          hasHihat: isActive('hihat', instruments.hihat),
+          hasPad: isActive('pad', instruments.pad),
+          hasPluck: false,
+          hasStab: false,
+          hasPiano: false,
+          hasStrings: activeInstruments.some(i => i.toLowerCase().includes('string')),
+          hasAcid: false,
+          hasPerc: activeInstruments.some(i => i.toLowerCase().includes('perc') || i.toLowerCase().includes('clap')),
+          hasFx: activeInstruments.some(i => i.toLowerCase().includes('fx') || i.toLowerCase().includes('riser')),
+          hasArp: activeInstruments.some(i => i.toLowerCase().includes('arp')),
+          hasVocal: activeInstruments.some(i => i.toLowerCase().includes('vocal')),
+        };
+      };
+
+      // ===== MAP SECTION TYPE =====
+      const mapSectionType = (type: string): 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro' => {
+        if (type === 'tension' || type === 'release') return 'buildup';
+        if (['intro', 'buildup', 'drop', 'breakdown', 'outro'].includes(type)) {
+          return type as 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
+        }
+        return 'buildup';
+      };
+
+      // ===== BUILD SECTIONS =====
+      const sections: SectionConfig[] = pb.sections.map((section, index) => ({
+        type: mapSectionType(section.type),
+        bars: section.bars,
+        intensity: section.energy * 10, // Convert 1-10 to 10-100
+        ...getInstrumentFlags(index, section.active_instruments, pb.instruments),
+      }));
+
+      // ===== APPLY GLOBAL SETTINGS =====
+      set({
+        bpm: pb.bpm,
+        key: pb.key,
+        scale: mapScale(pb.scale),
+        secondaryScale: pb.scale === 'minor' ? 'phrygian' : 'minor',
+        style: mapVibeToStyle(pb.vibe),
+        groove: 'straight' as GrooveType,
+        sections,
+      });
+
+      // ===== TRANSLATE INSTRUMENT ROLES TO DSP =====
+
+      // KICK - interpret character
+      const kickDSP = characterToDSP(pb.instruments.kick.character, pb.instruments.kick.presence);
+      set((state) => ({
+        kick: {
+          ...state.kick,
+          punch: Math.round(100 - kickDSP.brightness), // Dark = less punch click
+          sub: Math.round(kickDSP.warmth),
+          decay: Math.round(kickDSP.decay),
+          tone: Math.round(50 - (kickDSP.brightness - 50) * 0.5), // Inverse relationship
+        },
+      }));
+
+      // BASS - protagonist, interpret character
+      const bassDSP = characterToDSP(pb.instruments.bass.character, pb.instruments.bass.presence);
+      set((state) => ({
+        bass: {
+          ...state.bass,
+          cutoff: Math.round(200 + bassDSP.brightness * 4), // 200-600 range
+          resonance: Math.round(30 + bassDSP.warmth * 0.3),
+          distortion: Math.round(bassDSP.warmth * 0.2),
+          subMix: Math.round(50 + bassDSP.warmth * 0.4),
+        },
+      }));
+
+      // PAD - texture/atmosphere
+      const padDSP = characterToDSP(pb.instruments.pad.character, pb.instruments.pad.presence);
+      set((state) => ({
+        pad: {
+          ...state.pad,
+          filterCutoff: Math.round(800 + padDSP.brightness * 10),
+          attack: Math.round(500 + padDSP.attack * 10),
+          release: Math.round(1000 + padDSP.space * 20),
+          reverbMix: Math.round(40 + padDSP.space * 0.5),
+          brightness: Math.round(padDSP.brightness),
+        },
+      }));
+
+      // LEAD/MELODY - emotive, restrained
+      const leadDSP = characterToDSP(pb.instruments.lead.character, pb.instruments.lead.presence);
+      set((state) => ({
+        melody: {
+          ...state.melody,
+          filterCutoff: Math.round(1200 + leadDSP.brightness * 15),
+          attack: Math.round(leadDSP.attack * 0.5),
+          release: Math.round(300 + leadDSP.decay * 5),
+          reverbMix: Math.round(35 + leadDSP.space * 0.4),
+          delayMix: Math.round(25 + leadDSP.space * 0.3),
+          density: Math.round(20 + (100 - leadDSP.space) * 0.3), // More space = less density
+        },
+      }));
+
+      // HIHAT - subtle, ghostly
+      const hihatDSP = characterToDSP(pb.instruments.hihat.character, pb.instruments.hihat.presence);
+      set((state) => ({
+        hihat: {
+          ...state.hihat,
+          decay: Math.round(20 + hihatDSP.decay * 0.3),
+          pitch: Math.round(40 + hihatDSP.brightness * 0.3),
+          velocity: Math.round(40 + (100 - hihatDSP.space) * 0.3), // Subtle = lower velocity
+        },
+      }));
+
+      console.log('[TrackStore] Producer Blueprint applied:', {
+        bpm: pb.bpm,
+        key: pb.key,
+        scale: pb.scale,
+        narrative: pb.narrative,
+        vibe: pb.vibe,
+        sections: sections.length,
+        energy_curve: pb.energy_curve,
+        sectionsDetail: sections.map((s, i) => ({
+          index: i,
+          type: s.type,
+          bars: s.bars,
+          energy: pb.sections[i].energy,
+          hasKick: s.hasKick,
+          hasBass: s.hasBass,
+          hasMelody: s.hasMelody,
+          hasPad: s.hasPad,
+          hasHihat: s.hasHihat,
+          purpose: pb.sections[i].purpose,
+        })),
+        instrumentRoles: {
+          kick: pb.instruments.kick.role,
+          bass: pb.instruments.bass.role,
+          pad: pb.instruments.pad.role,
+          lead: pb.instruments.lead.role,
+          hihat: pb.instruments.hihat.role,
+        },
+        production_notes: pb.production_notes,
+      });
+
+      return;
+    }
+
+    // ===== LEGACY BLUEPRINT FORMAT (backward compatibility) =====
+    const legacyBlueprint = blueprint as MusicBlueprint;
+
     const mapScale = (s: string): Scale => {
       const validScales: Scale[] = [
         'minor', 'major', 'phrygian', 'harmonicMinor', 'melodicMinor',
@@ -915,176 +1179,50 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       return validScales.includes(s as Scale) ? (s as Scale) : 'minor';
     };
 
-    // Map vibe tags to TechnoStyle
     const mapVibeToStyle = (vibes: string[]): TechnoStyle => {
       const vibeStr = vibes.join(' ').toLowerCase();
-      if (vibeStr.includes('dark') || vibeStr.includes('deep')) return 'dark';
-      if (vibeStr.includes('hypnotic') || vibeStr.includes('repetitive')) return 'hypnotic';
-      if (vibeStr.includes('melodic') || vibeStr.includes('emotional')) return 'melodic';
-      if (vibeStr.includes('progressive') || vibeStr.includes('journey')) return 'progressive';
-      if (vibeStr.includes('minimal')) return 'minimal';
-      if (vibeStr.includes('industrial') || vibeStr.includes('hard')) return 'industrial';
-      if (vibeStr.includes('acid')) return 'acid';
+      if (vibeStr.includes('dark')) return 'dark';
+      if (vibeStr.includes('hypnotic')) return 'hypnotic';
+      if (vibeStr.includes('melodic')) return 'melodic';
       return 'melodic';
     };
 
-    // Map vibe to groove
-    const mapVibeToGroove = (vibes: string[]): GrooveType => {
-      const vibeStr = vibes.join(' ').toLowerCase();
-      if (vibeStr.includes('shuffle') || vibeStr.includes('swing')) return 'shuffle';
-      if (vibeStr.includes('syncopated') || vibeStr.includes('groovy')) return 'syncopated';
-      if (vibeStr.includes('broken')) return 'broken';
-      return 'straight';
-    };
+    const getActiveInstruments = (intensity: number, sectionType: string) => ({
+      hasKick: intensity >= 4 && sectionType !== 'breakdown',
+      hasBass: intensity >= 4 && sectionType !== 'breakdown',
+      hasMelody: intensity >= 6 || sectionType === 'breakdown',
+      hasHihat: intensity >= 5 && sectionType !== 'intro' && sectionType !== 'breakdown',
+      hasPad: intensity <= 6 || sectionType === 'intro' || sectionType === 'breakdown',
+      hasPluck: intensity >= 7 && sectionType === 'drop',
+      hasStab: false,
+      hasPiano: sectionType === 'breakdown',
+      hasStrings: sectionType === 'intro' || sectionType === 'breakdown' || sectionType === 'outro',
+      hasAcid: false,
+      hasPerc: intensity >= 6,
+      hasFx: sectionType === 'buildup' || intensity <= 3,
+      hasArp: intensity >= 6 && intensity <= 8,
+      hasVocal: sectionType === 'breakdown',
+    });
 
-    // Helper to determine which instruments should be active based on intensity
-    const getActiveInstruments = (intensity: number, sectionType: string) => {
-      const baseInstruments = {
-        hasKick: intensity >= 4 && sectionType !== 'breakdown',
-        hasBass: intensity >= 4 && sectionType !== 'breakdown',
-        hasMelody: intensity >= 6 || sectionType === 'breakdown',
-        hasHihat: intensity >= 5 && sectionType !== 'intro' && sectionType !== 'breakdown',
-        hasPad: intensity <= 6 || sectionType === 'intro' || sectionType === 'breakdown',
-        hasPluck: intensity >= 7 && sectionType === 'drop',
-        hasStab: false,
-        hasPiano: sectionType === 'breakdown',
-        hasStrings: sectionType === 'intro' || sectionType === 'breakdown' || sectionType === 'outro',
-        hasAcid: false,
-        hasPerc: intensity >= 6,
-        hasFx: sectionType === 'buildup' || intensity <= 3,
-        hasArp: intensity >= 6 && intensity <= 8,
-        hasVocal: sectionType === 'breakdown',
-      };
-      return baseInstruments;
-    };
-
-    // Convert structure to sections
-    const sections: SectionConfig[] = blueprint.structure.map((section) => ({
+    const sections: SectionConfig[] = legacyBlueprint.structure.map((section) => ({
       type: section.type,
       bars: section.bars,
-      intensity: section.intensity * 10, // Convert 0-10 to 0-100
+      intensity: section.intensity * 10,
       ...getActiveInstruments(section.intensity, section.type),
     }));
 
-    // Apply global settings
     set({
-      bpm: blueprint.bpm,
-      key: blueprint.key,
-      scale: mapScale(blueprint.scale),
-      secondaryScale: blueprint.scale === 'minor' ? 'phrygian' : 'minor',
-      style: mapVibeToStyle(blueprint.vibe),
-      groove: mapVibeToGroove(blueprint.vibe),
+      bpm: legacyBlueprint.bpm,
+      key: legacyBlueprint.key,
+      scale: mapScale(legacyBlueprint.scale),
+      style: mapVibeToStyle(legacyBlueprint.vibe),
       sections,
     });
 
-    // Apply instrument parameters from blueprint
-    const instruments = blueprint.instruments;
-
-    if (instruments.kick) {
-      set((state) => ({
-        kick: {
-          ...state.kick,
-          punch: instruments.kick.punch ?? state.kick.punch,
-          tone: instruments.kick.tone ?? state.kick.tone,
-          decay: instruments.kick.decay ?? state.kick.decay,
-          sub: instruments.kick.sub ?? state.kick.sub,
-        },
-      }));
-    }
-
-    if (instruments.bass) {
-      set((state) => ({
-        bass: {
-          ...state.bass,
-          cutoff: instruments.bass.cutoff ?? state.bass.cutoff,
-          resonance: instruments.bass.resonance ?? state.bass.resonance,
-          drive: instruments.bass.drive ?? (instruments.bass.distortion ?? state.bass.distortion),
-        },
-      }));
-    }
-
-    if (instruments.hats) {
-      set((state) => ({
-        hihat: {
-          ...state.hihat,
-          decay: instruments.hats.decay ?? state.hihat.decay,
-          pitch: instruments.hats.pitch ?? state.hihat.pitch,
-        },
-      }));
-    }
-
-    if (instruments.pad) {
-      set((state) => ({
-        pad: {
-          ...state.pad,
-          attack: instruments.pad.attack ?? state.pad.attack,
-          release: instruments.pad.release ?? state.pad.release,
-          filterCutoff: instruments.pad.cutoff ?? state.pad.filterCutoff,
-          reverbMix: instruments.pad.reverbMix ?? state.pad.reverbMix,
-        },
-      }));
-    }
-
-    if (instruments.arp) {
-      set((state) => ({
-        arp: {
-          ...state.arp,
-          speed: instruments.arp.rate ?? state.arp.speed,
-          swing: instruments.arp.swing ?? state.arp.swing,
-        },
-      }));
-    }
-
-    if (instruments.lead) {
-      set((state) => ({
-        melody: {
-          ...state.melody,
-          filterCutoff: instruments.lead.cutoff ?? state.melody.filterCutoff,
-          attack: instruments.lead.attack ?? state.melody.attack,
-          release: instruments.lead.release ?? state.melody.release,
-          delayMix: instruments.lead.delayMix ?? state.melody.delayMix,
-        },
-      }));
-    }
-
-    if (instruments.pluck) {
-      set((state) => ({
-        pluck: {
-          ...state.pluck,
-          decay: instruments.pluck.decay ?? state.pluck.decay,
-          brightness: instruments.pluck.brightness ?? state.pluck.brightness,
-          reverbMix: instruments.pluck.reverbMix ?? state.pluck.reverbMix,
-        },
-      }));
-    }
-
-    if (instruments.vocalPad) {
-      set((state) => ({
-        vocal: {
-          ...state.vocal,
-          brightness: instruments.vocalPad.brightness ?? state.vocal.brightness,
-          reverbMix: instruments.vocalPad.reverbMix ?? state.vocal.reverbMix,
-          attack: instruments.vocalPad.attack ?? state.vocal.attack,
-        },
-      }));
-    }
-
-    if (instruments.clap) {
-      set((state) => ({
-        perc: {
-          ...state.perc,
-          decay: instruments.clap.decay ?? state.perc.decay,
-          reverb: instruments.clap.reverbMix ?? state.perc.reverb,
-        },
-      }));
-    }
-
-    console.log('[TrackStore] Applied blueprint:', {
-      bpm: blueprint.bpm,
-      key: blueprint.key,
-      scale: blueprint.scale,
+    console.log('[TrackStore] Legacy blueprint applied:', {
+      bpm: legacyBlueprint.bpm,
+      key: legacyBlueprint.key,
       sections: sections.length,
-      instruments: Object.keys(instruments),
     });
   },
 

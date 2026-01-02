@@ -1,33 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useTrackStore } from '@/stores/trackStore';
+import { useTrackStore, type ProducerBlueprint } from '@/stores/trackStore';
 import { Sparkles, Loader2, Wand2, Brain, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Scale, TechnoStyle, GrooveType } from '@/types';
 
-// Blueprint response type from /api/compose
-interface MusicBlueprint {
-  bpm: number;
-  key: string;
-  scale: string;
-  vibe: string[];
-  structure: Array<{
-    type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
-    bars: number;
-    intensity: number;
-  }>;
-  instruments: Record<string, Record<string, number>>;
-  patterns: Record<string, Array<{
-    time: string;
-    note: string;
-    duration: string;
-    velocity: number;
-  }>>;
-}
-
 interface ComposeResponse {
   success: boolean;
-  blueprint?: MusicBlueprint;
+  blueprint?: ProducerBlueprint;
   error?: string;
   detail?: string;
   requestId?: string;
@@ -233,15 +213,32 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
       }
 
       if (data.blueprint) {
-        // Apply the AI-generated blueprint to the store
+        // Apply the AI-generated producer blueprint to the store
         applyBlueprint(data.blueprint);
 
+        // Display the narrative as the mood
         const vibeStr = data.blueprint.vibe?.slice(0, 2).join(', ') || 'AI';
         setLastMood(`AI: ${vibeStr}`);
+
+        // Calculate total bars
+        const totalBars = data.blueprint.sections.reduce((sum, s) => sum + s.bars, 0);
+
+        // Show producer-focused feedback
         showNotification(
           'success',
-          `Blueprint: ${data.blueprint.bpm} BPM, ${data.blueprint.key} ${data.blueprint.scale}, ${data.blueprint.structure.length} secciones`
+          `${data.blueprint.bpm} BPM, ${data.blueprint.key} ${data.blueprint.scale} | ${totalBars} bars | "${data.blueprint.narrative.slice(0, 60)}..."`
         );
+
+        // Log producer details to console
+        console.log('[AIPrompt] Producer Blueprint received:', {
+          narrative: data.blueprint.narrative,
+          vibe: data.blueprint.vibe,
+          energy_curve: data.blueprint.energy_curve,
+          sections: data.blueprint.sections.map(s => `${s.type} (${s.bars} bars, E${s.energy})`),
+          bass_role: data.blueprint.instruments.bass.role,
+          bass_character: data.blueprint.instruments.bass.character,
+          production_notes: data.blueprint.production_notes,
+        });
 
         // Trigger regeneration
         onGenerate?.();
@@ -362,8 +359,8 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
       <div className="mt-3 pt-3 border-t border-zinc-700/50">
         <p className="text-xs text-zinc-500">
           <Brain className="w-3 h-3 inline mr-1" />
-          AI Compose usa GPT-5.2 para generar un Music Blueprint completo con estructura,
-          parámetros de instrumentos, y patterns para Tone.js.
+          AI Compose piensa como un productor: decide estructura, roles de instrumentos,
+          curva de energía, y narrativa emocional. El bass siempre es el protagonista.
         </p>
       </div>
     </div>
