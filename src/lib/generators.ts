@@ -6,6 +6,57 @@ import type {
   ArpParams, VocalParams, Scale, SectionConfig, TechnoStyle, GrooveType, ChordProgression
 } from '@/types';
 
+// ========== KA:ST / AFTERLIFE DARK SOUND DESIGN ==========
+// Reglas: dark, underground, emotivo, hipnótico
+// - Máximo 4-6 capas activas por sección
+// - Low-end dominante (bass es protagonista)
+// - High-end controlado (opaco/cálido)
+// - Emoción viene de repetición + automatización lenta
+
+// Ka:st preferred keys (dark, emotional)
+const KAST_KEYS = ['A', 'D', 'F#', 'C', 'G', 'E'];
+
+// Ka:st preferred scales (dark only)
+const KAST_SCALES: Scale[] = ['minor', 'phrygian', 'harmonicMinor'];
+
+// Ka:st tempo range
+const KAST_BPM_MIN = 122;
+const KAST_BPM_MAX = 124;
+
+// Hook motif patterns (2-4 notes, hypnotic, repetitive)
+const KAST_HOOK_MOTIFS = [
+  // Simple 2-note hooks (most hypnotic)
+  { notes: [0, 4], positions: [0, 8], durations: ['4n', '4n'] },
+  { notes: [0, 7], positions: [0, 12], durations: ['4n.', '8n'] },
+  { notes: [4, 0], positions: [4, 12], durations: ['4n', '4n'] },
+  // 3-note hooks
+  { notes: [0, 2, 4], positions: [0, 6, 12], durations: ['4n', '8n', '4n'] },
+  { notes: [0, 4, 2], positions: [0, 8, 14], durations: ['4n', '4n', '8n'] },
+  // 4-note hooks (maximum complexity)
+  { notes: [0, 2, 4, 2], positions: [0, 4, 8, 12], durations: ['8n', '8n', '8n', '8n'] },
+  { notes: [0, 4, 7, 4], positions: [0, 4, 8, 14], durations: ['8n', '8n', '4n', '8n'] },
+];
+
+// Energy levels by section type (1-10)
+const KAST_ENERGY_MAP: Record<string, { min: number; max: number }> = {
+  intro: { min: 2, max: 3 },
+  buildup: { min: 4, max: 6 },
+  drop: { min: 8, max: 9 },
+  breakdown: { min: 3, max: 4 },
+  bridge: { min: 5, max: 6 },
+  outro: { min: 3, max: 4 },
+};
+
+// Maximum simultaneous elements per section type
+const KAST_MAX_ELEMENTS: Record<string, number> = {
+  intro: 3,
+  buildup: 5,
+  drop: 6,
+  breakdown: 4,
+  bridge: 5,
+  outro: 4,
+};
+
 // Extended scales for more variety
 const SCALES: Record<Scale, number[]> = {
   minor: [0, 2, 3, 5, 7, 8, 10],
