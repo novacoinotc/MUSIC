@@ -189,6 +189,24 @@ DO NOT:
 - Use fast or playful rhythms
 - Repeat the same structural decisions every time
 
+ANTI-BRIGHT RULES (CRITICAL - STRICTLY ENFORCED):
+These instruments are FORBIDDEN as protagonist or lead:
+- Piano (NEVER as melody, ONLY as distant filtered texture in breakdowns)
+- Bright plucks (FORBIDDEN - use dark filtered textures instead)
+- Clear melodic leads (NO - prefer dark mid-range analog textures)
+- Arpeggios as melodic focus (NO - arp is ONLY for subtle hypnotic texture)
+
+If it sounds "beautiful", "pretty", or "melodic" in a conventional sense = FAILURE
+The sound must be: dark, filtered, mid-low focused, hypnotic, restrained
+
+ALLOWED melodic elements (always filtered, secondary to bass):
+- Dark filtered pads (lowpass < 1500Hz)
+- Subtle analog-style leads (lowpass < 1200Hz, sine/triangle only)
+- Ghostly distant textures (heavy reverb, very low in mix)
+- Hypnotic gated patterns (texture, not melody)
+
+Bass is the ONLY protagonist. Everything else supports the bass.
+
 CORE RULES (STRICT):
 - Max 4 to 5 instruments total per section
 - Bass is always the main character (role: protagonist)
@@ -241,14 +259,24 @@ INSTRUMENT ROLES:
 - accent: Occasional emphasis, not constant (stabs, fx)
 - atmosphere: Creates space and mood (reverb tails, ambient textures)
 
-CHARACTER DESCRIPTIONS (examples):
-- "dark and warm sub" (bass)
-- "hypnotic pulse" (kick)
-- "ethereal and distant" (pad)
-- "emotive and restrained" (lead)
-- "subtle and ghostly" (hihat)
+CHARACTER DESCRIPTIONS (DARK PALETTE ONLY):
+Bass (protagonist - always dominant):
+- "dark and warm sub", "heavy analog rumble", "hypnotic low pulse", "deep filtered growl"
+Kick (rhythm - supportive):
+- "hypnotic pulse", "deep thud", "minimal punch", "warehouse thump"
+Pad (texture - filtered, background):
+- "ethereal and distant", "dark cloud", "filtered warmth", "ghostly atmosphere"
+Lead (texture - NEVER bright, always filtered):
+- "dark mid-range", "filtered analog", "restrained and muted", "distant whisper"
+Hihat (rhythm - subtle):
+- "subtle and ghostly", "minimal tick", "dark shimmer", "barely there"
+
+FORBIDDEN character descriptions (will produce bad results):
+- "bright", "sparkling", "clear", "crisp", "punchy lead", "melodic", "beautiful"
+- "piano-like", "plucky", "sharp attack", "present", "upfront melody"
 
 Think like a producer crafting a record for a dark warehouse at 4am.
+The bass owns the room. Everything else is shadow and texture.
 Aim for timelessness, not novelty.
 
 Return ONLY valid JSON matching the schema exactly.`;
