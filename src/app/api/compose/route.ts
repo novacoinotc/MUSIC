@@ -122,7 +122,7 @@ El JSON debe seguir exactamente el schema ComposerPlan.`;
 // JSON Schema for structured output
 const COMPOSER_PLAN_JSON_SCHEMA = {
   name: 'ComposerPlan',
-  strict: true,
+  strict: false,
   schema: {
     type: 'object',
     properties: {
