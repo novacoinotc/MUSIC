@@ -279,7 +279,7 @@ Asegúrate de que:
         json_schema: COMPOSER_PLAN_JSON_SCHEMA,
       },
       temperature: 0.7,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     });
 
     // Extract content
