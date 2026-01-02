@@ -157,21 +157,21 @@ class AudioEngine {
         envelope: { attack: 0.001, decay: 0.012, sustain: 0, release: 0.008 },
       }).connect(kickClickFilter);
 
-      // ===== BASS =====
-      this.bassGain = new Tone.Gain(0.6).connect(this.masterGain);
+      // ===== BASS (KA:ST - PROTAGONISTA, profundo, cálido) =====
+      this.bassGain = new Tone.Gain(0.75).connect(this.masterGain); // MÁS ALTO - protagonista
       this.bassDistortion = new Tone.Distortion(0).connect(this.bassGain);
-      this.bassFilter = new Tone.Filter({ frequency: 400, type: 'lowpass', rolloff: -24, Q: 1.5 }).connect(this.bassDistortion);
+      this.bassFilter = new Tone.Filter({ frequency: 350, type: 'lowpass', rolloff: -24, Q: 1 }).connect(this.bassDistortion); // Filtro más bajo
 
       this.bassSynth = new Tone.MonoSynth({
-        oscillator: { type: 'sawtooth' },
-        filter: { Q: 3, type: 'lowpass', rolloff: -24 },
-        envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.12 },
-        filterEnvelope: { attack: 0.01, decay: 0.25, sustain: 0.25, release: 0.15, baseFrequency: 80, octaves: 2.5 },
+        oscillator: { type: 'triangle' }, // Triangle = más cálido que saw
+        filter: { Q: 2, type: 'lowpass', rolloff: -24 },
+        envelope: { attack: 0.015, decay: 0.25, sustain: 0.5, release: 0.15 },
+        filterEnvelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.2, baseFrequency: 60, octaves: 2 },
       }).connect(this.bassFilter);
 
       this.bassSubSynth = new Tone.Synth({
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.01, decay: 0.25, sustain: 0.5, release: 0.15 },
+        envelope: { attack: 0.01, decay: 0.3, sustain: 0.6, release: 0.2 },
       }).connect(this.bassGain);
 
       // ===== ACID BASS (303) =====
@@ -186,54 +186,54 @@ class AudioEngine {
         filterEnvelope: { attack: 0.002, decay: 0.2, sustain: 0.1, release: 0.1, baseFrequency: 200, octaves: 4 },
       }).connect(this.acidFilter);
 
-      // ===== LEAD MELODY =====
-      this.melodyReverb = new Tone.Reverb({ decay: 3.5, wet: 0.35 }).connect(this.masterGain);
-      this.melodyDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.25 }).connect(this.melodyReverb);
-      this.melodyChorus = new Tone.Chorus({ frequency: 1.5, depth: 0.35, wet: 0.25 }).connect(this.melodyDelay);
-      this.melodyFilter = new Tone.Filter({ frequency: 3000, type: 'lowpass', rolloff: -12 }).connect(this.melodyChorus);
-      this.melodyGain = new Tone.Gain(0.35).connect(this.melodyFilter);
+      // ===== LEAD MELODY (KA:ST - sutil, oscura, etérea) =====
+      this.melodyReverb = new Tone.Reverb({ decay: 4.5, wet: 0.5 }).connect(this.masterGain); // Más reverb
+      this.melodyDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.3, wet: 0.35 }).connect(this.melodyReverb);
+      this.melodyChorus = new Tone.Chorus({ frequency: 1, depth: 0.3, wet: 0.25 }).connect(this.melodyDelay);
+      this.melodyFilter = new Tone.Filter({ frequency: 2000, type: 'lowpass', rolloff: -12 }).connect(this.melodyChorus); // Filtro más bajo
+      this.melodyGain = new Tone.Gain(0.28).connect(this.melodyFilter); // Menos volumen
 
       this.melodySynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.06, decay: 0.4, sustain: 0.3, release: 1 },
+        oscillator: { type: 'sine' }, // Sine = más suave que triangle
+        envelope: { attack: 0.1, decay: 0.5, sustain: 0.25, release: 1.5 }, // Ataque más suave
       }).connect(this.melodyGain);
 
-      // ===== ARPEGGIATOR =====
-      this.arpReverb = new Tone.Reverb({ decay: 4, wet: 0.4 }).connect(this.masterGain);
-      this.arpDelay = new Tone.PingPongDelay({ delayTime: '16n', feedback: 0.35, wet: 0.3 }).connect(this.arpReverb);
-      this.arpFilter = new Tone.Filter({ frequency: 4000, type: 'lowpass', rolloff: -12 }).connect(this.arpDelay);
-      this.arpGain = new Tone.Gain(0.22).connect(this.arpFilter);
+      // ===== ARPEGGIATOR (KA:ST - hipnótico, oscuro) =====
+      this.arpReverb = new Tone.Reverb({ decay: 5, wet: 0.5 }).connect(this.masterGain); // Más reverb
+      this.arpDelay = new Tone.PingPongDelay({ delayTime: '8n', feedback: 0.4, wet: 0.4 }).connect(this.arpReverb); // Más delay
+      this.arpFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass', rolloff: -12 }).connect(this.arpDelay); // Filtro más bajo
+      this.arpGain = new Tone.Gain(0.18).connect(this.arpFilter); // Menos volumen
 
       this.arpSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.003, decay: 0.12, sustain: 0.08, release: 0.25 },
+        envelope: { attack: 0.02, decay: 0.2, sustain: 0.1, release: 0.4 }, // Más suave
       }).connect(this.arpGain);
 
-      // ===== PLUCK SYNTH =====
-      this.pluckReverb = new Tone.Reverb({ decay: 3, wet: 0.45 }).connect(this.masterGain);
-      this.pluckDelay = new Tone.PingPongDelay({ delayTime: '8n', feedback: 0.3, wet: 0.35 }).connect(this.pluckReverb);
-      this.pluckFilter = new Tone.Filter({ frequency: 3500, type: 'lowpass' }).connect(this.pluckDelay);
-      this.pluckGain = new Tone.Gain(0.28).connect(this.pluckFilter);
+      // ===== PLUCK SYNTH (KA:ST - oscuro, espacioso) =====
+      this.pluckReverb = new Tone.Reverb({ decay: 4, wet: 0.55 }).connect(this.masterGain); // Más reverb
+      this.pluckDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.35, wet: 0.45 }).connect(this.pluckReverb);
+      this.pluckFilter = new Tone.Filter({ frequency: 2200, type: 'lowpass' }).connect(this.pluckDelay); // Más oscuro
+      this.pluckGain = new Tone.Gain(0.22).connect(this.pluckFilter); // Menos volumen
 
       this.pluckSynth = new Tone.PluckSynth({
-        attackNoise: 2,
-        dampening: 3000,
-        resonance: 0.95,
+        attackNoise: 1.5, // Menos ataque
+        dampening: 2000, // Más oscuro
+        resonance: 0.9,
       }).connect(this.pluckGain);
 
       this.pluckSynth2 = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.002, decay: 0.3, sustain: 0, release: 0.3 },
+        oscillator: { type: 'sine' }, // Más suave
+        envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.5 },
       }).connect(this.pluckGain);
 
-      // ===== STAB SYNTH =====
-      this.stabReverb = new Tone.Reverb({ decay: 2, wet: 0.3 }).connect(this.masterGain);
-      this.stabFilter = new Tone.Filter({ frequency: 4000, type: 'lowpass', rolloff: -12 }).connect(this.stabReverb);
-      this.stabGain = new Tone.Gain(0.3).connect(this.stabFilter);
+      // ===== STAB SYNTH (KA:ST - oscuro, menos frecuente) =====
+      this.stabReverb = new Tone.Reverb({ decay: 3, wet: 0.45 }).connect(this.masterGain);
+      this.stabFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass', rolloff: -12 }).connect(this.stabReverb); // Más oscuro
+      this.stabGain = new Tone.Gain(0.22).connect(this.stabFilter); // Menos volumen
 
       this.stabSynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.003, decay: 0.15, sustain: 0.1, release: 0.15 },
+        oscillator: { type: 'triangle' }, // Más suave que saw
+        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.25 },
       }).connect(this.stabGain);
 
       // ===== PIANO (subtle, breakdown texture only) =====
@@ -245,78 +245,78 @@ class AudioEngine {
         envelope: { attack: 0.15, decay: 2, sustain: 0.2, release: 3 }, // Softer attack, longer release
       }).connect(this.pianoGain);
 
-      // ===== STRINGS =====
-      this.stringsReverb = new Tone.Reverb({ decay: 5, wet: 0.5 }).connect(this.masterGain);
-      this.stringsChorus = new Tone.Chorus({ frequency: 0.5, depth: 0.6, wet: 0.4 }).connect(this.stringsReverb);
-      this.stringsFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass' }).connect(this.stringsChorus);
-      this.stringsGain = new Tone.Gain(0.25).connect(this.stringsFilter);
+      // ===== STRINGS (KA:ST - oscuras, cinematográficas) =====
+      this.stringsReverb = new Tone.Reverb({ decay: 7, wet: 0.6 }).connect(this.masterGain); // Más reverb
+      this.stringsChorus = new Tone.Chorus({ frequency: 0.3, depth: 0.5, wet: 0.35 }).connect(this.stringsReverb);
+      this.stringsFilter = new Tone.Filter({ frequency: 1800, type: 'lowpass' }).connect(this.stringsChorus); // Más oscuro
+      this.stringsGain = new Tone.Gain(0.22).connect(this.stringsFilter);
 
       this.stringsSynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 1.5, decay: 0.8, sustain: 0.6, release: 2.5 },
+        oscillator: { type: 'triangle' }, // Triangle en vez de saw = más cálido
+        envelope: { attack: 2, decay: 1, sustain: 0.55, release: 4 },
       }).connect(this.stringsGain);
 
       this.stringsSynth2 = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 2, decay: 1, sustain: 0.5, release: 3 },
+        oscillator: { type: 'sine' }, // Sine = más suave
+        envelope: { attack: 2.5, decay: 1.2, sustain: 0.45, release: 5 },
       }).connect(this.stringsGain);
 
-      // ===== PADS =====
-      this.padReverb = new Tone.Reverb({ decay: 6, wet: 0.55 }).connect(this.masterGain);
-      this.padChorus = new Tone.Chorus({ frequency: 0.3, depth: 0.7, wet: 0.45 }).connect(this.padReverb);
-      this.padFilter = new Tone.Filter({ frequency: 2000, type: 'lowpass', rolloff: -12 }).connect(this.padChorus);
-      this.padGain = new Tone.Gain(0.28).connect(this.padFilter);
+      // ===== PADS (KA:ST - muy oscuro, atmosférico, envolvente) =====
+      this.padReverb = new Tone.Reverb({ decay: 8, wet: 0.65 }).connect(this.masterGain); // MÁS reverb
+      this.padChorus = new Tone.Chorus({ frequency: 0.2, depth: 0.5, wet: 0.4 }).connect(this.padReverb); // Más lento
+      this.padFilter = new Tone.Filter({ frequency: 1400, type: 'lowpass', rolloff: -24 }).connect(this.padChorus); // MUY oscuro
+      this.padGain = new Tone.Gain(0.32).connect(this.padFilter); // Ligeramente más presente
 
       this.padSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sine' },
-        envelope: { attack: 1.8, decay: 1.2, sustain: 0.65, release: 3.5 },
+        envelope: { attack: 2.5, decay: 1.5, sustain: 0.6, release: 5 }, // Muy lento
       }).connect(this.padGain);
 
       this.padSynth2 = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 2.2, decay: 1, sustain: 0.55, release: 4 },
+        oscillator: { type: 'sine' }, // Ambos sine para oscuridad máxima
+        envelope: { attack: 3, decay: 1.2, sustain: 0.5, release: 6 },
       }).connect(this.padGain);
 
-      // ===== HI-HATS =====
-      this.hihatGain = new Tone.Gain(0.18).connect(this.masterGain);
-      this.hihatFilter = new Tone.Filter({ frequency: 9000, type: 'highpass' }).connect(this.hihatGain);
+      // ===== HI-HATS (KA:ST - sutiles, oscuros, menos agresivos) =====
+      this.hihatGain = new Tone.Gain(0.12).connect(this.masterGain); // MUCHO más bajo
+      this.hihatFilter = new Tone.Filter({ frequency: 7000, type: 'highpass' }).connect(this.hihatGain); // Menos brillante
 
       this.hihatClosed = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+        noise: { type: 'pink' }, // Pink = menos brillante que white
+        envelope: { attack: 0.002, decay: 0.04, sustain: 0, release: 0.02 },
       }).connect(this.hihatFilter);
 
       this.hihatOpen = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.25, sustain: 0, release: 0.15 },
+        noise: { type: 'pink' }, // Pink noise
+        envelope: { attack: 0.002, decay: 0.2, sustain: 0, release: 0.12 },
       }).connect(this.hihatFilter);
 
-      // ===== PERCUSSION =====
-      this.percGain = new Tone.Gain(0.35).connect(this.masterGain);
-      this.clapReverb = new Tone.Reverb({ decay: 1.2, wet: 0.35 }).connect(this.percGain);
+      // ===== PERCUSSION (KA:ST - sutil, espacioso) =====
+      this.percGain = new Tone.Gain(0.28).connect(this.masterGain); // Más bajo
+      this.clapReverb = new Tone.Reverb({ decay: 2, wet: 0.45 }).connect(this.percGain); // Más reverb
 
       this.clapSynth = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.08 },
+        noise: { type: 'pink' }, // Pink = más cálido
+        envelope: { attack: 0.002, decay: 0.1, sustain: 0, release: 0.1 },
       }).connect(this.clapReverb);
 
-      const rimFilter = new Tone.Filter({ frequency: 2000, type: 'bandpass', Q: 5 }).connect(this.percGain);
+      const rimFilter = new Tone.Filter({ frequency: 1500, type: 'bandpass', Q: 4 }).connect(this.percGain); // Más oscuro
       this.rimSynth = new Tone.MembraneSynth({
         pitchDecay: 0.008,
         octaves: 2,
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+        envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 },
       }).connect(rimFilter);
 
       this.tomSynth = new Tone.MembraneSynth({
         pitchDecay: 0.04,
         octaves: 3,
-        envelope: { attack: 0.001, decay: 0.25, sustain: 0, release: 0.15 },
+        envelope: { attack: 0.001, decay: 0.22, sustain: 0, release: 0.12 },
       }).connect(this.percGain);
 
-      const shakerFilter = new Tone.Filter({ frequency: 6000, type: 'highpass' }).connect(this.percGain);
+      const shakerFilter = new Tone.Filter({ frequency: 5000, type: 'highpass' }).connect(this.percGain); // Más bajo
       this.shakerSynth = new Tone.NoiseSynth({
         noise: { type: 'pink' },
-        envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.02 },
+        envelope: { attack: 0.001, decay: 0.025, sustain: 0, release: 0.015 },
       }).connect(shakerFilter);
 
       // ===== VOCALS (Formant Synthesis for ooh/aah sounds) =====

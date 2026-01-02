@@ -26,7 +26,19 @@ import type {
 } from '@/types';
 import { RANDOM_POOLS, DEFAULT_SECTIONS, DEFAULT_VOCAL } from '@/types';
 
-// Chord progressions pool for randomization
+// ========== KA:ST / AFTERLIFE DARK SOUND DESIGN ==========
+// Reglas estrictas para sonido oscuro, hipnótico, emocional
+// - BPM: 122-124 (rango muy cerrado para cohesión)
+// - Keys: A, D, F# (preferidos), C, G, E (secundarios)
+// - Scales: minor, phrygian, harmonicMinor SOLO
+// - Máximo 4-6 capas por sección
+
+const KAST_KEYS = ['A', 'D', 'F#', 'C', 'G', 'E'];
+const KAST_SCALES: Scale[] = ['minor', 'phrygian', 'harmonicMinor'];
+const KAST_BPM_MIN = 122;
+const KAST_BPM_MAX = 124;
+
+// Chord progressions pool - DARK and HYPNOTIC only
 const CHORD_PROGRESSIONS: ChordProgression[] = [
   'i-VI-III-VII',   // Classic emotional minor
   'i-VII-VI-VII',   // Dark repetitive
@@ -287,11 +299,16 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
   reorderSections: (sections) => set({ sections }),
 
   randomizeSections: () => {
-    // REGLA: "Menos es más" - Máximo 5-7 elementos por sección
-    // Jerarquía: Intro(3) -> Groove(4) -> Dev(5) -> Drop(6) -> Breakdown(5) -> Build(5) -> Drop(6) -> Outro(4)
+    // ========== KA:ST ARRANGEMENT RULES ==========
+    // REGLA: "Menos es más" - Máximo 4-6 elementos por sección
+    // REGLA: Pre-drop silence (solo FX/riser antes del drop)
+    // REGLA: Breakdown SIN kick
+    // REGLA: Estructura 16/32 bars
+    // Jerarquía: Intro(3) -> Groove(4) -> Dev(5) -> PRE-DROP(1-2) -> Drop(6) ->
+    //            Breakdown(4) -> Build(5) -> PRE-DROP(1-2) -> Drop(6) -> Outro(4)
     const sections: SectionConfig[] = [];
 
-    // Intro - 16 bars: Pad + Strings/FX (3 elementos max)
+    // ===== INTRO - 16 bars: Pad + Strings + FX (3 elementos) =====
     sections.push({
       type: 'intro',
       bars: 16,
@@ -303,16 +320,16 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasPluck: false,
       hasStab: false,
       hasPiano: false,
-      hasStrings: Math.random() > 0.4,
+      hasStrings: true,
       hasAcid: false,
       hasPerc: false,
       hasFx: true,
       hasArp: false,
       hasVocal: false,
-      intensity: randomRange(20, 30),
+      intensity: randomRange(15, 25),
     });
 
-    // Groove - 16 bars: Kick + Bass + Hats + Pad (4 elementos)
+    // ===== GROOVE - 16 bars: Kick + Bass + Hats + Pad (4 elementos) =====
     sections.push({
       type: 'buildup',
       bars: 16,
@@ -333,7 +350,7 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       intensity: randomRange(45, 55),
     });
 
-    // Desarrollo - 16 bars: Kick + Bass + Hats + Arp + Perc (5 elementos)
+    // ===== DESARROLLO - 16 bars: Kick + Bass + Hats + Arp + Perc (5 elementos) =====
     sections.push({
       type: 'buildup',
       bars: 16,
@@ -354,7 +371,28 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       intensity: randomRange(60, 70),
     });
 
-    // Drop 1 - 32 bars: Kick + Bass + Hats + Melody + Arp + Perc (6 elementos max)
+    // ===== PRE-DROP 1 - 2 bars: SILENCIO + FX (tensión máxima) =====
+    sections.push({
+      type: 'buildup',
+      bars: 2,
+      hasKick: false,   // Sin kick = tensión
+      hasBass: false,   // Sin bass = expectativa
+      hasMelody: false,
+      hasHihat: false,
+      hasPad: true,     // Solo pad para mantener armonía
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: true,      // FX/riser para tensión
+      hasArp: false,
+      hasVocal: false,
+      intensity: randomRange(25, 35),
+    });
+
+    // ===== DROP 1 - 32 bars: Kick + Bass + Hats + Melody + Arp + Perc (6 elementos) =====
     sections.push({
       type: 'drop',
       bars: 32,
@@ -372,34 +410,34 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasFx: false,
       hasArp: true,
       hasVocal: false,
-      intensity: 100,
+      intensity: 95,
     });
 
-    // Breakdown - 16 bars: Pad + Melody + Piano + Strings + Vocal (5 elementos)
+    // ===== BREAKDOWN - 16 bars: Pad + Melody + Strings + Vocal (4 elementos, SIN KICK) =====
     sections.push({
       type: 'breakdown',
       bars: 16,
-      hasKick: false,
-      hasBass: false,
+      hasKick: false,   // NUNCA kick en breakdown
+      hasBass: false,   // Sin bass = espacio emocional
       hasMelody: true,
       hasHihat: false,
       hasPad: true,
       hasPluck: false,
       hasStab: false,
-      hasPiano: Math.random() > 0.5,
+      hasPiano: false,  // Piano muy ocasional
       hasStrings: true,
       hasAcid: false,
       hasPerc: false,
       hasFx: false,
       hasArp: false,
       hasVocal: true,
-      intensity: randomRange(30, 40),
+      intensity: randomRange(25, 35),
     });
 
-    // Build - 8 bars: Kick + Bass + Hats + Arp + FX (5 elementos)
+    // ===== BUILD - 16 bars: Kick + Bass + Hats + Arp + FX (5 elementos) =====
     sections.push({
       type: 'buildup',
-      bars: 8,
+      bars: 16,
       hasKick: true,
       hasBass: true,
       hasMelody: false,
@@ -417,7 +455,28 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       intensity: randomRange(70, 80),
     });
 
-    // Drop 2 - 32 bars: Kick + Bass + Hats + Melody + Pluck + Perc (6 elementos - variación)
+    // ===== PRE-DROP 2 - 2 bars: SILENCIO + FX =====
+    sections.push({
+      type: 'buildup',
+      bars: 2,
+      hasKick: false,
+      hasBass: false,
+      hasMelody: false,
+      hasHihat: false,
+      hasPad: true,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: true,
+      hasArp: false,
+      hasVocal: false,
+      intensity: randomRange(25, 35),
+    });
+
+    // ===== DROP 2 - 32 bars: Kick + Bass + Hats + Melody + Pluck + Perc (6 elementos) =====
     sections.push({
       type: 'drop',
       bars: 32,
@@ -426,26 +485,26 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasMelody: true,
       hasHihat: true,
       hasPad: false,
-      hasPluck: true, // Variación: pluck en lugar de arp
+      hasPluck: true,   // Variación: pluck en lugar de arp
       hasStab: false,
       hasPiano: false,
       hasStrings: false,
       hasAcid: false,
       hasPerc: true,
       hasFx: false,
-      hasArp: false, // Sin arp para diferenciar del drop 1
+      hasArp: false,    // Sin arp para diferenciar del drop 1
       hasVocal: false,
       intensity: 100,
     });
 
-    // Outro - 16 bars: Kick + Hats + Pad + Strings (4 elementos)
+    // ===== OUTRO - 16 bars: Kick + Pad + Strings (3 elementos) =====
     sections.push({
       type: 'outro',
       bars: 16,
       hasKick: true,
       hasBass: false,
       hasMelody: false,
-      hasHihat: true,
+      hasHihat: false,  // Sin hihats en outro = más cinematográfico
       hasPad: true,
       hasPluck: false,
       hasStab: false,
@@ -456,27 +515,35 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasFx: false,
       hasArp: false,
       hasVocal: false,
-      intensity: randomRange(25, 35),
+      intensity: randomRange(20, 30),
     });
 
     set({ sections });
   },
 
-  // MASSIVE randomization for total variety
+  // KA:ST / AFTERLIFE DARK randomization
+  // Todas las generaciones siguen el ADN sonoro Ka:st
   randomizeAll: () => {
-    const style = randomChoice(RANDOM_POOLS.styles);
-    const groove = randomChoice(RANDOM_POOLS.grooves);
-    const key = randomChoice(RANDOM_POOLS.keys);
-    const scale = randomChoice(RANDOM_POOLS.scales);
-    // Secondary scale for 2-scale system (different from primary)
-    const availableSecondaryScales = RANDOM_POOLS.scales.filter(s => s !== scale);
+    // ESTILO: Siempre melodic/hypnotic para Ka:st
+    const style = randomChoice(['melodic', 'hypnotic'] as TechnoStyle[]);
+    // GROOVE: straight o shuffle (nunca broken para mantener hipnosis)
+    const groove = randomChoice(['straight', 'shuffle'] as GrooveType[]);
+    // KEY: Solo keys oscuras/emocionales
+    const key = randomChoice(KAST_KEYS);
+    // SCALE: Solo minor, phrygian, harmonicMinor
+    const scale = randomChoice(KAST_SCALES);
+    // Secondary scale for breakdowns (diferente de primary)
+    const availableSecondaryScales = KAST_SCALES.filter(s => s !== scale);
     const secondaryScale = randomChoice(availableSecondaryScales);
     const chordProgression = randomChoice(CHORD_PROGRESSIONS);
-    const bpm = randomRange(RANDOM_POOLS.bpmRanges.min, RANDOM_POOLS.bpmRanges.max);
+    // BPM: Rango cerrado 122-124
+    const bpm = randomRange(KAST_BPM_MIN, KAST_BPM_MAX);
 
     // Randomize sections too
     get().randomizeSections();
 
+    // ========== KA:ST SOUND DESIGN PARAMETERS ==========
+    // Todo más oscuro, más cálido, menos brillo
     set({
       bpm,
       key,
@@ -485,123 +552,136 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       chordProgression,
       style,
       groove,
+      // KICK: Cálido, con mucho sub, poco click
       kick: {
-        style: randomChoice(RANDOM_POOLS.kickStyles),
-        punch: randomRange(40, 100),
-        sub: randomRange(50, 100),
-        decay: randomRange(20, 80),
-        pitch: randomRange(40, 70),
-        drive: randomRange(0, 60),
-        tone: randomRange(30, 70),
+        style: randomChoice(['punchy', 'deep', 'warm'] as KickStyle[]),
+        punch: randomRange(50, 70),      // Moderado, no agresivo
+        sub: randomRange(70, 95),        // MUCHO sub - protagonista
+        decay: randomRange(40, 60),      // Tail medio
+        pitch: randomRange(45, 55),      // Pitch bajo
+        drive: randomRange(10, 30),      // Poco drive, limpio
+        tone: randomRange(30, 50),       // Tono oscuro
       },
+      // BASS: Protagonista, profundo, cálido
       bass: {
-        type: randomChoice(RANDOM_POOLS.bassTypes),
-        synthType: randomChoice(['sawtooth', 'square', 'triangle', 'sine'] as const),
-        cutoff: randomRange(200, 1200),
-        resonance: randomRange(20, 80),
-        attack: randomRange(1, 30),
-        decay: randomRange(100, 500),
-        sustain: randomRange(30, 80),
-        release: randomRange(50, 300),
-        octave: randomRange(-2, 0),
-        glide: randomRange(0, 60),
-        distortion: randomRange(0, 50),
-        subMix: randomRange(30, 80),
+        type: randomChoice(['sub', 'deep'] as BassType[]),
+        synthType: randomChoice(['sine', 'triangle'] as const), // Solo formas suaves
+        cutoff: randomRange(300, 600),   // BAJO - oscuro
+        resonance: randomRange(30, 50),  // Resonancia moderada
+        attack: randomRange(5, 20),
+        decay: randomRange(150, 350),
+        sustain: randomRange(50, 70),
+        release: randomRange(100, 250),
+        octave: randomRange(-2, -1),     // Octavas bajas
+        glide: randomRange(20, 50),      // Glide para movimiento
+        distortion: randomRange(0, 20),  // Mínima distorsión
+        subMix: randomRange(60, 85),     // MUCHO sub
       },
+      // MELODY: Sutil, etérea, no protagonista
       melody: {
         scale,
         rootNote: key,
-        octave: randomRange(3, 5),
-        density: randomRange(20, 80),
-        variation: randomRange(10, 70),
-        arpSpeed: randomRange(20, 90),
-        synthType: randomChoice(['sine', 'triangle', 'sawtooth'] as const),
-        attack: randomRange(5, 80),
-        release: randomRange(100, 800),
-        filterCutoff: randomRange(1000, 5000),
-        reverbMix: randomRange(20, 70),
-        delayMix: randomRange(10, 60),
+        octave: randomRange(4, 5),
+        density: randomRange(20, 45),    // POCA densidad - espacio
+        variation: randomRange(10, 30),  // Poca variación - hipnótico
+        arpSpeed: randomRange(30, 50),   // Velocidad moderada
+        synthType: randomChoice(['sine', 'triangle'] as const), // Suave
+        attack: randomRange(30, 100),    // Ataque suave
+        release: randomRange(400, 1000), // Release largo
+        filterCutoff: randomRange(1200, 2500), // BAJO - oscuro
+        reverbMix: randomRange(45, 70),  // Mucho reverb
+        delayMix: randomRange(30, 55),   // Delay para espacio
       },
+      // HIHAT: Sutil, bajo volumen
       hihat: {
-        decay: randomRange(15, 60),
-        pitch: randomRange(30, 80),
-        pattern: randomChoice(['straight', 'offbeat', 'shuffle', 'complex', 'minimal', 'rolling'] as const),
-        velocity: randomRange(50, 90),
-        openRatio: randomRange(0, 50),
+        decay: randomRange(20, 40),
+        pitch: randomRange(40, 60),      // No muy brillante
+        pattern: randomChoice(['straight', 'minimal'] as const), // Simple
+        velocity: randomRange(40, 60),   // BAJO volumen
+        openRatio: randomRange(10, 30),  // Pocos open hats
       },
+      // PAD: Atmosférica, oscura, envolvente
       pad: {
         synthType: randomChoice(['sine', 'triangle'] as const),
-        attack: randomRange(300, 1200),
-        release: randomRange(500, 2000),
-        filterCutoff: randomRange(600, 3000),
-        lfoRate: Math.random() * 3,
-        lfoDepth: randomRange(10, 60),
-        reverbMix: randomRange(40, 80),
-        chord: randomChoice(['minor', 'major', 'sus4', 'sus2', 'minor7', 'add9'] as const),
-        brightness: randomRange(30, 70),
-        movement: randomRange(20, 60),
+        attack: randomRange(800, 1500),  // Ataque MUY lento
+        release: randomRange(1500, 3000), // Release MUY largo
+        filterCutoff: randomRange(800, 1800), // OSCURO
+        lfoRate: Math.random() * 1.5,    // LFO lento
+        lfoDepth: randomRange(15, 40),
+        reverbMix: randomRange(55, 80),  // Mucho reverb
+        chord: randomChoice(['minor', 'minor7', 'sus2'] as const), // Solo oscuros
+        brightness: randomRange(25, 45), // BAJO brillo
+        movement: randomRange(25, 50),
       },
+      // PLUCK: Sutil, mucho espacio
       pluck: {
         synthType: randomChoice(['triangle', 'sine'] as const),
-        decay: randomRange(150, 500),
-        brightness: randomRange(40, 80),
-        resonance: randomRange(30, 70),
-        reverbMix: randomRange(30, 70),
-        delayMix: randomRange(20, 60),
+        decay: randomRange(200, 450),
+        brightness: randomRange(35, 55), // OSCURO
+        resonance: randomRange(35, 55),
+        reverbMix: randomRange(50, 75),  // Mucho reverb
+        delayMix: randomRange(40, 65),   // Mucho delay
         octave: randomRange(4, 5),
       },
+      // STAB: Ocasional, no brillante
       stab: {
-        synthType: randomChoice(['sawtooth', 'square'] as const),
-        attack: randomRange(2, 15),
-        release: randomRange(100, 400),
-        filterCutoff: randomRange(2000, 5000),
-        voices: randomRange(2, 6),
-        detune: randomRange(10, 40),
-        reverbMix: randomRange(20, 50),
+        synthType: 'sawtooth' as const,
+        attack: randomRange(5, 20),
+        release: randomRange(150, 350),
+        filterCutoff: randomRange(1500, 3000), // NO muy brillante
+        voices: randomRange(3, 5),
+        detune: randomRange(15, 30),
+        reverbMix: randomRange(35, 55),
       },
+      // PIANO: MUY sutil, solo breakdowns
       piano: {
-        brightness: randomRange(40, 80),
-        reverb: randomRange(30, 60),
-        velocity: randomRange(50, 80),
-        octave: randomRange(3, 5),
+        brightness: randomRange(30, 50), // OSCURO
+        reverb: randomRange(50, 70),     // Mucho reverb
+        velocity: randomRange(35, 55),   // BAJO volumen
+        octave: randomRange(3, 4),
       },
+      // STRINGS: Atmosféricas, envolventes
       strings: {
-        attack: randomRange(500, 1500),
-        release: randomRange(800, 2500),
-        brightness: randomRange(30, 70),
-        ensemble: randomRange(40, 80),
-        reverbMix: randomRange(50, 85),
+        attack: randomRange(1000, 2000), // Muy lento
+        release: randomRange(1500, 3000),
+        brightness: randomRange(30, 50), // OSCURO
+        ensemble: randomRange(50, 75),
+        reverbMix: randomRange(60, 85),
       },
+      // ACID: Solo ocasionalmente, filtrado bajo
       acid: {
-        cutoff: randomRange(200, 800),
-        resonance: randomRange(50, 95),
-        envMod: randomRange(50, 100),
-        decay: randomRange(100, 400),
-        accent: randomRange(40, 90),
-        slide: randomRange(10, 60),
+        cutoff: randomRange(250, 500),   // MUY bajo
+        resonance: randomRange(55, 80),
+        envMod: randomRange(40, 70),
+        decay: randomRange(150, 350),
+        accent: randomRange(40, 65),
+        slide: randomRange(25, 50),
       },
+      // PERC: Solo clap/rim, sutil
       perc: {
-        type: randomChoice(['clap', 'snare', 'rim', 'shaker'] as const),
-        pitch: randomRange(30, 70),
-        decay: randomRange(30, 70),
-        reverb: randomRange(20, 50),
-        pattern: randomChoice(['sparse', 'regular', 'busy'] as const),
+        type: randomChoice(['clap', 'rim'] as const), // No shaker ni snare
+        pitch: randomRange(40, 60),
+        decay: randomRange(35, 55),
+        reverb: randomRange(35, 55),
+        pattern: randomChoice(['sparse', 'regular'] as const), // Nunca busy
       },
+      // ARP: Hipnótico, simple
       arp: {
-        pattern: randomChoice(['up', 'down', 'updown', 'random', 'order', 'chord'] as const),
-        speed: randomRange(30, 80),
-        octaves: randomRange(1, 3),
-        gate: randomRange(30, 80),
-        swing: randomRange(0, 40),
+        pattern: randomChoice(['up', 'down', 'order'] as const), // Simple
+        speed: randomRange(35, 55),
+        octaves: randomRange(1, 2),      // Max 2 octavas
+        gate: randomRange(40, 65),
+        swing: randomRange(0, 20),       // Poco swing
       },
+      // VOCAL: Etérea, ooh/aah, mucho espacio
       vocal: {
-        type: randomChoice(['ooh', 'aah', 'eeh', 'choir'] as const),
-        gender: randomChoice(['female', 'male', 'both'] as const),
-        brightness: randomRange(30, 70),
-        attack: randomRange(200, 600),
-        release: randomRange(500, 1200),
-        reverbMix: randomRange(40, 80),
-        mix: randomRange(40, 70),
+        type: randomChoice(['ooh', 'aah', 'choir'] as const), // No eeh (muy brillante)
+        gender: randomChoice(['female', 'both'] as const), // Preferir femenino
+        brightness: randomRange(30, 50), // OSCURO
+        attack: randomRange(350, 700),   // Lento
+        release: randomRange(800, 1500), // Largo
+        reverbMix: randomRange(55, 80),  // MUCHO reverb
+        mix: randomRange(45, 65),
       },
     });
   },
