@@ -121,10 +121,15 @@ class AudioEngine {
   private swingAmount = 0;
 
   async init() {
-    if (this.initialized) return;
+    if (this.initialized) {
+      console.log('[AudioEngine] init: Already initialized');
+      return;
+    }
 
     try {
+      console.log('[AudioEngine] init: Starting Tone.js...');
       await Tone.start();
+      console.log('[AudioEngine] init: Tone.js started, context state:', Tone.getContext().state);
 
       // ===== MASTER CHAIN =====
       this.masterGain = new Tone.Gain(0.7);
@@ -348,8 +353,9 @@ class AudioEngine {
       }).connect(this.vocalFilter3);
 
       this.initialized = true;
+      console.log('[AudioEngine] init: Complete! All synths ready.');
     } catch (error) {
-      console.error('Audio init error:', error);
+      console.error('[AudioEngine] init: Error:', error);
     }
   }
 
@@ -779,6 +785,9 @@ class AudioEngine {
   // ========== PATTERN SCHEDULING ==========
 
   schedulePattern(pattern: NoteEvent[], instrument: InstrumentType, startTime: number = 0) {
+    if (pattern.length > 0) {
+      console.log(`[AudioEngine] schedulePattern: ${instrument} - ${pattern.length} events at startTime ${startTime}`);
+    }
     pattern.forEach((event) => {
       const time = Tone.Time(event.time).toSeconds() + startTime;
 
@@ -838,7 +847,10 @@ class AudioEngine {
   // ========== TRANSPORT CONTROLS ==========
 
   play() {
+    console.log('[AudioEngine] play() called - initialized:', this.initialized);
+    console.log('[AudioEngine] Transport state:', Tone.getTransport().state);
     Tone.getTransport().start();
+    console.log('[AudioEngine] Transport started, new state:', Tone.getTransport().state);
   }
 
   stop() {

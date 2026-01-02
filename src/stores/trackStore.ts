@@ -1083,8 +1083,20 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       bpm: blueprint.bpm,
       key: blueprint.key,
       scale: blueprint.scale,
+      vibe: blueprint.vibe,
       sections: sections.length,
+      sectionsDetail: sections.map(s => ({
+        type: s.type,
+        bars: s.bars,
+        hasKick: s.hasKick,
+        hasBass: s.hasBass,
+        hasMelody: s.hasMelody,
+        hasHihat: s.hasHihat,
+        hasPad: s.hasPad,
+      })),
       instruments: Object.keys(instruments),
+      kickParams: instruments.kick,
+      bassParams: instruments.bass,
     });
   },
 
