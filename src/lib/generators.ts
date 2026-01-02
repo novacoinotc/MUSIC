@@ -1012,7 +1012,7 @@ function generatePadPatternWithProgression(
   return events;
 }
 
-// Piano pattern with chord progression
+// Piano pattern with chord progression - SUBTLE, only in breakdowns
 function generatePianoPatternWithProgression(
   bars: number,
   root: string,
@@ -1028,19 +1028,24 @@ function generatePianoPatternWithProgression(
   const scaleNotes = getScaleNotes(root, scale, octave);
   const upperNotes = getScaleNotes(root, scale, octave + 1);
 
-  const barsPerChord = 4;
+  // Piano should be VERY sparse - one chord every 8 bars, not 4
+  const barsPerChord = 8;
 
   for (let bar = 0; bar < bars; bar += barsPerChord) {
-    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
-    const upperTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+    // Only play 60% of the time for more space
+    if (random() > 0.6) continue;
 
-    // Play chord as piano voicing
-    [...chordTones, upperTones[0]].forEach((note, i) => {
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+
+    // Play just 2-3 notes, not full chord - more delicate
+    const notesToPlay = random() > 0.5 ? chordTones.slice(0, 2) : chordTones;
+
+    notesToPlay.forEach((note, i) => {
       events.push({
         note,
         time: `${bar}:0:0`,
-        duration: '1m',
-        velocity: (params.velocity / 100) * (0.4 + random() * 0.15 - (i * 0.02)),
+        duration: '2m', // Long sustained notes
+        velocity: (params.velocity / 100) * (0.2 + random() * 0.1), // Much lower velocity
       });
     });
   }

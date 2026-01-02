@@ -391,22 +391,25 @@ export const DEFAULT_VOCAL: VocalParams = {
 };
 
 // Default sections following 16/32 bar phrase structure (Afterlife style)
-// Energy curve: Intro (low) -> Buildup (rising) -> Drop (peak) -> Breakdown (emotional) -> Drop (peak) -> Outro (fade)
+// Energy curve: Intro (2-3) -> Groove (4-5) -> Dev (5-6) -> Drop (8-9) -> Breakdown (3-4) -> Build (6-8) -> Drop (8-9) -> Outro (3-4)
+// REGLA: "Menos es más" - Máximo 5-7 elementos a la vez, incluso en drops
 export const DEFAULT_SECTIONS: SectionConfig[] = [
-  // Intro - 16 bars, atmospheric, building tension
-  { type: 'intro', bars: 16, hasKick: false, hasBass: false, hasMelody: false, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 20 },
-  // Buildup - 16 bars, kick enters, tension builds
-  { type: 'buildup', bars: 16, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: true, intensity: 60 },
-  // Drop 1 - 32 bars, full energy, melodic elements
-  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: true, intensity: 100 },
-  // Breakdown - 16 bars, emotional moment, no kick
-  { type: 'breakdown', bars: 16, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
-  // Build back - 8 bars, tension before second drop
-  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: false, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: false, intensity: 70 },
-  // Drop 2 - 32 bars, full energy, maybe add acid
-  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: true, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 100 },
-  // Outro - 16 bars, gradual fade
-  { type: 'outro', bars: 16, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
+  // Intro - 16 bars: Pad + Strings + FX (3 elementos) - atmosférico
+  { type: 'intro', bars: 16, hasKick: false, hasBass: false, hasMelody: false, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: false, intensity: 25 },
+  // Groove - 16 bars: Kick + Bass + Hats + Pad (4 elementos) - solo el groove
+  { type: 'buildup', bars: 16, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: false, hasFx: false, hasArp: false, hasVocal: false, intensity: 50 },
+  // Desarrollo - 16 bars: Kick + Bass + Hats + Arp + Perc (5 elementos) - entra el motor
+  { type: 'buildup', bars: 16, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: false, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 65 },
+  // Drop 1 - 32 bars: Kick + Bass + Hats + Melody + Arp + Perc (6 elementos) - full pero controlado
+  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 100 },
+  // Breakdown - 16 bars: Pad + Melody + Piano + Strings + Vocal (5 elementos) - emocional, sin ritmo
+  { type: 'breakdown', bars: 16, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: false, hasArp: false, hasVocal: true, intensity: 35 },
+  // Build - 8 bars: Kick + Bass + Hats + Arp + FX (5 elementos) - tensión antes del drop
+  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: false, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: false, hasFx: true, hasArp: true, hasVocal: false, intensity: 75 },
+  // Drop 2 - 32 bars: Kick + Bass + Hats + Melody + Pluck + Perc (6 elementos) - variación
+  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: false, hasVocal: false, intensity: 100 },
+  // Outro - 16 bars: Kick + Hats + Pad + Strings (4 elementos) - fade out
+  { type: 'outro', bars: 16, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: false, hasArp: false, hasVocal: false, intensity: 30 },
 ];
 
 // Style presets - Afterlife/Ka:st/Tale Of Us/Anyma/Adriatique style

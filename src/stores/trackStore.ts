@@ -287,31 +287,32 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
   reorderSections: (sections) => set({ sections }),
 
   randomizeSections: () => {
-    // Generate proper 16/32 bar phrase structure (Afterlife/melodic techno style)
+    // REGLA: "Menos es más" - Máximo 5-7 elementos por sección
+    // Jerarquía: Intro(3) -> Groove(4) -> Dev(5) -> Drop(6) -> Breakdown(5) -> Build(5) -> Drop(6) -> Outro(4)
     const sections: SectionConfig[] = [];
 
-    // Intro - always 16 bars, atmospheric
+    // Intro - 16 bars: Pad + Strings/FX (3 elementos max)
     sections.push({
       type: 'intro',
       bars: 16,
       hasKick: false,
       hasBass: false,
       hasMelody: false,
-      hasHihat: Math.random() > 0.7,
+      hasHihat: false,
       hasPad: true,
       hasPluck: false,
       hasStab: false,
       hasPiano: false,
-      hasStrings: Math.random() > 0.5,
+      hasStrings: Math.random() > 0.4,
       hasAcid: false,
       hasPerc: false,
       hasFx: true,
       hasArp: false,
-      hasVocal: Math.random() > 0.5,
-      intensity: randomRange(15, 30),
+      hasVocal: false,
+      intensity: randomRange(20, 30),
     });
 
-    // Buildup - 16 bars
+    // Groove - 16 bars: Kick + Bass + Hats + Pad (4 elementos)
     sections.push({
       type: 'buildup',
       bars: 16,
@@ -319,20 +320,41 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasBass: true,
       hasMelody: false,
       hasHihat: true,
-      hasPad: Math.random() > 0.4,
+      hasPad: true,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: false,
+      hasArp: false,
+      hasVocal: false,
+      intensity: randomRange(45, 55),
+    });
+
+    // Desarrollo - 16 bars: Kick + Bass + Hats + Arp + Perc (5 elementos)
+    sections.push({
+      type: 'buildup',
+      bars: 16,
+      hasKick: true,
+      hasBass: true,
+      hasMelody: false,
+      hasHihat: true,
+      hasPad: false,
       hasPluck: false,
       hasStab: false,
       hasPiano: false,
       hasStrings: false,
       hasAcid: false,
       hasPerc: true,
-      hasFx: true,
-      hasArp: Math.random() > 0.5,
-      hasVocal: Math.random() > 0.5,
-      intensity: randomRange(50, 70),
+      hasFx: false,
+      hasArp: true,
+      hasVocal: false,
+      intensity: randomRange(60, 70),
     });
 
-    // Drop 1 - 32 bars, full energy
+    // Drop 1 - 32 bars: Kick + Bass + Hats + Melody + Arp + Perc (6 elementos max)
     sections.push({
       type: 'drop',
       bars: 32,
@@ -341,19 +363,19 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasMelody: true,
       hasHihat: true,
       hasPad: false,
-      hasPluck: Math.random() > 0.4,
-      hasStab: Math.random() > 0.6,
+      hasPluck: false,
+      hasStab: false,
       hasPiano: false,
       hasStrings: false,
-      hasAcid: Math.random() > 0.8,
+      hasAcid: false,
       hasPerc: true,
       hasFx: false,
-      hasArp: Math.random() > 0.4,
-      hasVocal: Math.random() > 0.5,
+      hasArp: true,
+      hasVocal: false,
       intensity: 100,
     });
 
-    // Breakdown - 16 bars, emotional moment
+    // Breakdown - 16 bars: Pad + Melody + Piano + Strings + Vocal (5 elementos)
     sections.push({
       type: 'breakdown',
       bars: 16,
@@ -368,13 +390,13 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasStrings: true,
       hasAcid: false,
       hasPerc: false,
-      hasFx: true,
+      hasFx: false,
       hasArp: false,
       hasVocal: true,
-      intensity: randomRange(25, 40),
+      intensity: randomRange(30, 40),
     });
 
-    // Build back - 8 bars
+    // Build - 8 bars: Kick + Bass + Hats + Arp + FX (5 elementos)
     sections.push({
       type: 'buildup',
       bars: 8,
@@ -388,14 +410,14 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasPiano: false,
       hasStrings: false,
       hasAcid: false,
-      hasPerc: true,
+      hasPerc: false,
       hasFx: true,
       hasArp: true,
       hasVocal: false,
-      intensity: randomRange(60, 80),
+      intensity: randomRange(70, 80),
     });
 
-    // Drop 2 - 32 bars
+    // Drop 2 - 32 bars: Kick + Bass + Hats + Melody + Pluck + Perc (6 elementos - variación)
     sections.push({
       type: 'drop',
       bars: 32,
@@ -404,26 +426,26 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasMelody: true,
       hasHihat: true,
       hasPad: false,
-      hasPluck: Math.random() > 0.5,
-      hasStab: Math.random() > 0.5,
+      hasPluck: true, // Variación: pluck en lugar de arp
+      hasStab: false,
       hasPiano: false,
       hasStrings: false,
-      hasAcid: Math.random() > 0.7,
+      hasAcid: false,
       hasPerc: true,
       hasFx: false,
-      hasArp: Math.random() > 0.5,
-      hasVocal: Math.random() > 0.6,
+      hasArp: false, // Sin arp para diferenciar del drop 1
+      hasVocal: false,
       intensity: 100,
     });
 
-    // Outro - 16 bars
+    // Outro - 16 bars: Kick + Hats + Pad + Strings (4 elementos)
     sections.push({
       type: 'outro',
       bars: 16,
-      hasKick: Math.random() > 0.3,
+      hasKick: true,
       hasBass: false,
-      hasMelody: Math.random() > 0.6,
-      hasHihat: Math.random() > 0.5,
+      hasMelody: false,
+      hasHihat: true,
       hasPad: true,
       hasPluck: false,
       hasStab: false,
@@ -431,10 +453,10 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       hasStrings: true,
       hasAcid: false,
       hasPerc: false,
-      hasFx: true,
+      hasFx: false,
       hasArp: false,
-      hasVocal: true,
-      intensity: randomRange(20, 35),
+      hasVocal: false,
+      intensity: randomRange(25, 35),
     });
 
     set({ sections });

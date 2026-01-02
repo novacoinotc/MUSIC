@@ -236,13 +236,13 @@ class AudioEngine {
         envelope: { attack: 0.003, decay: 0.15, sustain: 0.1, release: 0.15 },
       }).connect(this.stabGain);
 
-      // ===== PIANO =====
-      this.pianoReverb = new Tone.Reverb({ decay: 2.5, wet: 0.35 }).connect(this.masterGain);
-      this.pianoGain = new Tone.Gain(0.32).connect(this.pianoReverb);
+      // ===== PIANO (subtle, breakdown texture only) =====
+      this.pianoReverb = new Tone.Reverb({ decay: 4, wet: 0.55 }).connect(this.masterGain);
+      this.pianoGain = new Tone.Gain(0.18).connect(this.pianoReverb); // Lower gain
 
       this.pianoSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'triangle' },
-        envelope: { attack: 0.002, decay: 1.2, sustain: 0.1, release: 1.5 },
+        envelope: { attack: 0.15, decay: 2, sustain: 0.2, release: 3 }, // Softer attack, longer release
       }).connect(this.pianoGain);
 
       // ===== STRINGS =====
