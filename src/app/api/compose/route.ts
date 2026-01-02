@@ -274,10 +274,7 @@ Asegúrate de que:
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userMessage },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: COMPOSER_PLAN_JSON_SCHEMA,
-      },
+      response_format: { type: 'json_object' },
       max_completion_tokens: 4000,
     });
 
