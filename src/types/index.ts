@@ -160,6 +160,16 @@ export interface FxParams {
   filter: number;
 }
 
+export interface VocalParams {
+  type: 'ooh' | 'aah' | 'eeh' | 'choir';
+  gender: 'female' | 'male' | 'both';
+  brightness: number; // 0-100
+  attack: number;
+  release: number;
+  reverbMix: number;
+  mix: number; // 0-100 overall level
+}
+
 export interface ArpParams {
   pattern: 'up' | 'down' | 'updown' | 'random' | 'order' | 'chord';
   speed: number; // in divisions (16n, 8n, etc)
@@ -188,6 +198,7 @@ export interface TrackState {
   perc: PercParams;
   fx: FxParams;
   arp: ArpParams;
+  vocal: VocalParams;
   masterVolume: number;
 }
 
@@ -207,6 +218,7 @@ export interface SectionConfig {
   hasPerc: boolean;
   hasFx: boolean;
   hasArp: boolean;
+  hasVocal: boolean;
   intensity: number;
 }
 
@@ -351,13 +363,23 @@ export const DEFAULT_ARP: ArpParams = {
   swing: 0,
 };
 
+export const DEFAULT_VOCAL: VocalParams = {
+  type: 'ooh',
+  gender: 'female',
+  brightness: 50,
+  attack: 300,
+  release: 800,
+  reverbMix: 60,
+  mix: 50,
+};
+
 export const DEFAULT_SECTIONS: SectionConfig[] = [
-  { type: 'intro', bars: 8, hasKick: false, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, intensity: 30 },
-  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, intensity: 60 },
-  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: true, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, intensity: 100 },
-  { type: 'breakdown', bars: 8, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, intensity: 40 },
-  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: true, hasPerc: true, hasFx: false, hasArp: true, intensity: 100 },
-  { type: 'outro', bars: 8, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, intensity: 30 },
+  { type: 'intro', bars: 8, hasKick: false, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: false, intensity: 30 },
+  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: true, intensity: 60 },
+  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: true, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: true, intensity: 100 },
+  { type: 'breakdown', bars: 8, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 40 },
+  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: true, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 100 },
+  { type: 'outro', bars: 8, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
 ];
 
 // Style presets - different combinations for different techno styles

@@ -48,6 +48,7 @@ export function StructureBuilder() {
       hasPerc: type === 'drop' || type === 'buildup',
       hasFx: type === 'buildup' || type === 'intro',
       hasArp: type === 'drop' || type === 'buildup',
+      hasVocal: type === 'breakdown' || type === 'buildup',
       intensity: type === 'drop' ? 100 : type === 'buildup' ? 60 : 40,
     };
     addSection(newSection);
@@ -133,33 +134,40 @@ export function StructureBuilder() {
             />
             <span className="text-xs text-zinc-500">bars</span>
 
-            {/* Element toggles */}
-            <div className="flex gap-1 ml-auto">
-              {(['hasKick', 'hasBass', 'hasMelody', 'hasHihat', 'hasPad'] as const).map((el) => {
-                const labels = {
+            {/* Element toggles - Row 1: Core instruments */}
+            <div className="flex flex-wrap gap-1 ml-auto">
+              {(['hasKick', 'hasBass', 'hasMelody', 'hasHihat', 'hasPad', 'hasArp', 'hasVocal', 'hasPerc'] as const).map((el) => {
+                const labels: Record<string, string> = {
                   hasKick: 'K',
                   hasBass: 'B',
                   hasMelody: 'M',
                   hasHihat: 'H',
                   hasPad: 'P',
+                  hasArp: 'A',
+                  hasVocal: 'V',
+                  hasPerc: 'C',
                 };
-                const colors = {
+                const colors: Record<string, string> = {
                   hasKick: '#ff4444',
                   hasBass: '#ff8844',
                   hasMelody: '#00ccff',
                   hasHihat: '#ffcc00',
                   hasPad: '#aa44ff',
+                  hasArp: '#00ff88',
+                  hasVocal: '#ff66cc',
+                  hasPerc: '#ff9900',
                 };
                 return (
                   <button
                     key={el}
                     onClick={() => toggleElement(i, el)}
-                    className={`w-6 h-6 text-xs rounded flex items-center justify-center font-bold transition-all ${
+                    className={`w-5 h-5 text-[10px] rounded flex items-center justify-center font-bold transition-all ${
                       section[el]
                         ? 'text-white'
                         : 'bg-zinc-700 text-zinc-500'
                     }`}
                     style={section[el] ? { backgroundColor: colors[el] } : {}}
+                    title={el.replace('has', '')}
                   >
                     {labels[el]}
                   </button>

@@ -15,6 +15,7 @@ import type {
   AcidParams,
   PercParams,
   ArpParams,
+  VocalParams,
   SectionConfig,
   Scale,
   TechnoStyle,
@@ -22,7 +23,7 @@ import type {
   KickStyle,
   BassType,
 } from '@/types';
-import { RANDOM_POOLS, DEFAULT_SECTIONS } from '@/types';
+import { RANDOM_POOLS, DEFAULT_SECTIONS, DEFAULT_VOCAL } from '@/types';
 
 interface TrackStore extends TrackState {
   // Setters
@@ -46,6 +47,7 @@ interface TrackStore extends TrackState {
   updateAcid: (params: Partial<AcidParams>) => void;
   updatePerc: (params: Partial<PercParams>) => void;
   updateArp: (params: Partial<ArpParams>) => void;
+  updateVocal: (params: Partial<VocalParams>) => void;
 
   // Section management
   updateSection: (index: number, config: Partial<SectionConfig>) => void;
@@ -188,6 +190,7 @@ const DEFAULT_STATE: TrackState = {
     gate: 50,
     swing: 0,
   },
+  vocal: DEFAULT_VOCAL,
 };
 
 function randomRange(min: number, max: number): number {
@@ -244,6 +247,9 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
   updateArp: (params) =>
     set((state) => ({ arp: { ...state.arp, ...params } })),
 
+  updateVocal: (params) =>
+    set((state) => ({ vocal: { ...state.vocal, ...params } })),
+
   updateSection: (index, config) =>
     set((state) => ({
       sections: state.sections.map((s, i) =>
@@ -295,6 +301,7 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
         hasPerc: type !== 'breakdown' && Math.random() > 0.4,
         hasFx: (type === 'buildup' || type === 'intro') && Math.random() > 0.3,
         hasArp: (type === 'drop' || type === 'buildup') && Math.random() > 0.4,
+        hasVocal: (type === 'breakdown' || type === 'buildup' || type === 'drop') && Math.random() > 0.5,
         intensity,
       });
     }
@@ -427,6 +434,15 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
         octaves: randomRange(1, 3),
         gate: randomRange(30, 80),
         swing: randomRange(0, 40),
+      },
+      vocal: {
+        type: randomChoice(['ooh', 'aah', 'eeh', 'choir'] as const),
+        gender: randomChoice(['female', 'male', 'both'] as const),
+        brightness: randomRange(30, 70),
+        attack: randomRange(200, 600),
+        release: randomRange(500, 1200),
+        reverbMix: randomRange(40, 80),
+        mix: randomRange(40, 70),
       },
     });
   },

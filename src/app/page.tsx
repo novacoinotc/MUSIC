@@ -7,6 +7,8 @@ import {
   MelodyModule,
   HiHatModule,
   PadModule,
+  VocalModule,
+  InstrumentRack,
   StructureBuilder,
   Transport,
   Visualizer,
@@ -72,26 +74,32 @@ export default function Home() {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Instruments */}
+          {/* Left Column - Core Instruments */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-              Instruments
+              Core Instruments
             </h2>
             <KickModule />
             <BassModule />
             <MelodyModule />
           </div>
 
-          {/* Right Column - Percussion & Pads */}
+          {/* Right Column - Percussion & Atmosphere */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
               Percussion & Atmosphere
             </h2>
             <HiHatModule />
             <PadModule />
-            <StructureBuilder />
+            <VocalModule />
           </div>
         </div>
+
+        {/* Extended Instruments */}
+        <InstrumentRack />
+
+        {/* Structure Builder */}
+        <StructureBuilder />
 
         {/* Tips Section */}
         <div className="bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/20 rounded-xl p-6">

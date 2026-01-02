@@ -5,6 +5,8 @@ export { BassModule } from './BassModule';
 export { MelodyModule } from './MelodyModule';
 export { HiHatModule } from './HiHatModule';
 export { PadModule } from './PadModule';
+export { VocalModule } from './VocalModule';
+export { InstrumentRack } from './InstrumentRack';
 export { StructureBuilder } from './StructureBuilder';
 export { Transport } from './Transport';
 export { Visualizer } from './Visualizer';

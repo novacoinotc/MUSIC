@@ -3,7 +3,7 @@
 import type {
   NoteEvent, KickParams, BassParams, MelodyParams, HiHatParams, PadParams,
   PluckParams, StabParams, PianoParams, StringsParams, AcidParams, PercParams,
-  ArpParams, Scale, SectionConfig, TechnoStyle, GrooveType
+  ArpParams, VocalParams, Scale, SectionConfig, TechnoStyle, GrooveType
 } from '@/types';
 
 // Extended scales for more variety
@@ -57,18 +57,14 @@ function getScaleNotes(root: string, scale: Scale, octave: number): string[] {
 }
 
 // ========== KICK PATTERNS ==========
-// Many different kick patterns for variety
+// Clean, danceable kick patterns - the foundation of the groove
 const KICK_PATTERNS = {
-  fourOnFloor: [0, 4, 8, 12],
-  minimal: [0, 8],
-  broken: [0, 3, 8, 11],
-  offbeat: [2, 6, 10, 14],
-  halftime: [0, 8],
-  syncopated: [0, 3, 6, 10, 14],
-  techno: [0, 4, 8, 12, 14],
-  industrial: [0, 2, 4, 6, 8, 10, 12, 14],
-  bounce: [0, 4, 7, 8, 12],
-  shuffle: [0, 3, 8, 11],
+  fourOnFloor: [0, 4, 8, 12],  // Classic techno
+  minimal: [0, 8],            // Very minimal
+  skipBeat: [0, 4, 12],       // Skip beat 3 for tension
+  bounce: [0, 4, 8, 14],      // Slight shuffle feel
+  halftime: [0, 8],           // Half time feel
+  punchy: [0, 4, 10, 12],     // Syncopated but groovy
 };
 
 export function generateKickPattern(
@@ -81,40 +77,42 @@ export function generateKickPattern(
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
 
-  // Select pattern based on style
-  const patternKeys = Object.keys(KICK_PATTERNS) as (keyof typeof KICK_PATTERNS)[];
+  // Select pattern based on style - prioritize solid groove
   let patternName: keyof typeof KICK_PATTERNS;
 
   switch (style) {
     case 'minimal':
-      patternName = random() > 0.5 ? 'minimal' : 'halftime';
-      break;
-    case 'industrial':
-      patternName = random() > 0.5 ? 'industrial' : 'syncopated';
-      break;
-    case 'dark':
-    case 'berlin':
-      patternName = random() > 0.5 ? 'techno' : 'broken';
+    case 'hypnotic':
+      patternName = 'fourOnFloor'; // Steady foundation
       break;
     case 'progressive':
     case 'melodic':
-      patternName = random() > 0.5 ? 'fourOnFloor' : 'bounce';
+      patternName = random() > 0.3 ? 'fourOnFloor' : 'skipBeat';
+      break;
+    case 'dark':
+    case 'berlin':
+      patternName = random() > 0.5 ? 'fourOnFloor' : 'punchy';
       break;
     default:
-      patternName = patternKeys[Math.floor(random() * patternKeys.length)];
+      patternName = 'fourOnFloor'; // Default to solid groove
   }
+
+  // Groove variations
+  if (groove === 'halftime') patternName = 'halftime';
+  if (groove === 'broken') patternName = 'punchy';
 
   const pattern = KICK_PATTERNS[patternName];
 
   for (let bar = 0; bar < bars; bar++) {
-    // Vary patterns between bars
-    const useVariation = random() > 0.7 && bar > 0;
-    const currentPattern = useVariation
-      ? KICK_PATTERNS[patternKeys[Math.floor(random() * patternKeys.length)]]
+    // Keep pattern consistent for better groove - only vary occasionally
+    const useVariation = random() > 0.85 && bar > 0 && bar % 4 === 3;
+    const currentPattern = useVariation && intensity > 70
+      ? KICK_PATTERNS.bounce
       : pattern;
 
     for (const pos of currentPattern) {
-      if (random() * 100 > intensity) continue;
+      // High intensity = more kicks
+      if (intensity < 50 && random() > 0.8) continue;
 
       const beat = Math.floor(pos / 4);
       const sixteenth = pos % 4;
@@ -123,7 +121,7 @@ export function generateKickPattern(
         note: 'C1',
         time: `${bar}:${beat}:${sixteenth}`,
         duration: '8n',
-        velocity: pos === 0 ? 0.9 : 0.7 + random() * 0.2,
+        velocity: pos === 0 ? 0.95 : 0.85, // Downbeat accent
       });
     }
   }
@@ -132,23 +130,20 @@ export function generateKickPattern(
 }
 
 // ========== BASS PATTERNS ==========
+// Less dense, more groove - leave space for the kick
 const BASS_PATTERNS = [
-  // Root focused
-  { notes: [0, 0, 0, 0], durations: ['4n', '4n', '4n', '4n'] },
-  // Walking bass
-  { notes: [0, 2, 3, 4, 3, 2, 0, 0], durations: ['8n', '8n', '8n', '8n', '8n', '8n', '8n', '8n'] },
-  // Syncopated
-  { notes: [0, -1, 3, 0, 4, -1, 0], durations: ['8n.', '16n', '8n', '8n', '8n', '16n', '8n'] },
-  // Minimal
-  { notes: [0, 0], durations: ['2n', '2n'] },
-  // Groovy
-  { notes: [0, 0, 4, 0, 3, 0, 0, 2], durations: ['8n', '8n', '8n', '8n', '8n', '8n', '8n', '8n'] },
-  // Driving
-  { notes: [0, 0, 0, 0, 0, 0, 0, 0], durations: ['16n', '16n', '16n', '16n', '16n', '16n', '16n', '16n'] },
-  // Melodic
-  { notes: [0, 2, 4, 2, 0, -1, 0, 2], durations: ['8n', '8n', '8n', '8n', '8n', '8n', '8n', '8n'] },
-  // Acid style
-  { notes: [0, 0, 7, 0, 0, 5, 0, 3], durations: ['16n', '8n', '16n', '8n', '16n', '8n', '16n', '8n'] },
+  // Minimal - just root on offbeats, leaving space for kick
+  { positions: [2, 10], notes: [0, 0], durations: ['8n', '8n'] },
+  // Syncopated groove
+  { positions: [3, 11], notes: [0, 2], durations: ['8n', '8n'] },
+  // Melodic minimal
+  { positions: [2, 6, 14], notes: [0, 2, 0], durations: ['8n', '8n', '8n'] },
+  // Rolling but sparse
+  { positions: [2, 7, 10, 15], notes: [0, 0, 2, 0], durations: ['16n', '16n', '16n', '16n'] },
+  // Long notes
+  { positions: [2], notes: [0], durations: ['2n'] },
+  // Punchy
+  { positions: [2, 10], notes: [0, 3], durations: ['16n', '16n'] },
 ];
 
 export function generateBassPattern(
@@ -169,51 +164,41 @@ export function generateBassPattern(
   let patternIndex: number;
   switch (style) {
     case 'minimal':
-      patternIndex = 3; // Minimal pattern
+      patternIndex = 0;
       break;
-    case 'acid':
-      patternIndex = 7; // Acid pattern
+    case 'hypnotic':
+      patternIndex = 4; // Long notes
       break;
-    case 'industrial':
-      patternIndex = 5; // Driving pattern
+    case 'melodic':
+    case 'progressive':
+      patternIndex = 2; // Melodic minimal
       break;
     default:
       patternIndex = Math.floor(random() * BASS_PATTERNS.length);
   }
 
   for (let bar = 0; bar < bars; bar++) {
-    // Occasionally switch patterns
-    if (bar > 0 && random() > 0.75) {
+    // Switch pattern every 4 bars for variety
+    if (bar > 0 && bar % 4 === 0 && random() > 0.6) {
       patternIndex = Math.floor(random() * BASS_PATTERNS.length);
     }
 
     const pattern = BASS_PATTERNS[patternIndex];
-    let currentPos = 0;
 
-    for (let i = 0; i < pattern.notes.length; i++) {
-      if (random() * 100 > intensity && currentPos > 0) {
-        currentPos += durationToSixteenths(pattern.durations[i]);
-        continue;
-      }
+    for (let i = 0; i < pattern.positions.length; i++) {
+      if (random() * 100 > intensity * 1.2) continue;
 
-      let noteIdx = pattern.notes[i];
-      // Handle negative indices (go down)
-      while (noteIdx < 0) noteIdx += scaleNotes.length;
-      noteIdx = noteIdx % scaleNotes.length;
+      const noteIdx = Math.abs(pattern.notes[i]) % scaleNotes.length;
+      const pos = pattern.positions[i];
+      const beat = Math.floor(pos / 4);
+      const sixteenth = pos % 4;
 
-      const beat = Math.floor(currentPos / 4);
-      const sixteenth = currentPos % 4;
-
-      if (currentPos < 16) {
-        events.push({
-          note: scaleNotes[noteIdx],
-          time: `${bar}:${beat}:${sixteenth}`,
-          duration: pattern.durations[i],
-          velocity: 0.6 + random() * 0.25,
-        });
-      }
-
-      currentPos += durationToSixteenths(pattern.durations[i]);
+      events.push({
+        note: scaleNotes[noteIdx],
+        time: `${bar}:${beat}:${sixteenth}`,
+        duration: pattern.durations[i],
+        velocity: 0.7 + random() * 0.15,
+      });
     }
   }
 
@@ -221,6 +206,7 @@ export function generateBassPattern(
 }
 
 // ========== ACID BASS PATTERNS ==========
+// 303-style but not overwhelming
 export function generateAcidPattern(
   bars: number,
   root: string,
@@ -233,37 +219,35 @@ export function generateAcidPattern(
   const events: NoteEvent[] = [];
   const scaleNotes = getScaleNotes(root, scale, 1);
   const upperNotes = getScaleNotes(root, scale, 2);
-  const allNotes = [...scaleNotes, ...upperNotes];
 
-  // 303-style patterns - lots of 16th notes
+  // Sparser acid patterns - not every 16th
   const acidPatterns = [
-    [0, 0, 7, 0, 5, 0, 7, 12, 0, 0, 5, 0, 7, 0, 10, 0],
-    [0, 3, 0, 5, 0, 7, 0, 5, 0, 3, 0, 5, 0, 7, 12, 7],
-    [0, 0, 0, 5, 0, 0, 7, 0, 0, 0, 0, 5, 0, 0, 3, 0],
-    [0, 12, 0, 7, 0, 5, 0, 3, 0, 12, 0, 7, 0, 5, 7, 10],
+    [0, -1, -1, 4, -1, -1, 7, -1, 0, -1, -1, 4, -1, -1, 5, -1],
+    [-1, 0, -1, -1, 4, -1, -1, 7, -1, 0, -1, -1, 5, -1, -1, 7],
+    [0, -1, 0, -1, 4, -1, 7, -1, 0, -1, 0, -1, 5, -1, 3, -1],
   ];
 
   const patternIdx = Math.floor(random() * acidPatterns.length);
 
   for (let bar = 0; bar < bars; bar++) {
-    const pattern = acidPatterns[(patternIdx + bar) % acidPatterns.length];
+    const pattern = acidPatterns[(patternIdx + Math.floor(bar / 2)) % acidPatterns.length];
 
-    for (let i = 0; i < pattern.length; i++) {
-      if (pattern[i] === 0 && random() > 0.4) continue;
+    for (let i = 0; i < 16; i++) {
+      if (pattern[i] === -1) continue; // Rest
       if (random() * 100 > intensity) continue;
 
+      const allNotes = [...scaleNotes, ...upperNotes];
       const noteIdx = pattern[i] % allNotes.length;
       const beat = Math.floor(i / 4);
       const sixteenth = i % 4;
 
-      // Accent on certain notes
       const isAccent = random() > (1 - params.accent / 100);
 
       events.push({
         note: allNotes[noteIdx],
         time: `${bar}:${beat}:${sixteenth}`,
-        duration: random() > 0.5 ? '16n' : '8n',
-        velocity: isAccent ? 0.85 : 0.55 + random() * 0.2,
+        duration: '16n',
+        velocity: isAccent ? 0.85 : 0.6,
       });
     }
   }
@@ -272,27 +256,20 @@ export function generateAcidPattern(
 }
 
 // ========== MELODY PATTERNS ==========
+// MUCH sparser - this is melodic techno, not EDM
 const MELODY_PHRASES = [
-  // Ascending emotional
-  [0, 2, 4, 5, 7, 5, 4],
-  // Descending melancholic
-  [7, 5, 4, 2, 0, 2],
+  // Simple, emotional phrases - just 2-4 notes per bar
+  { notes: [0, 4], positions: [0, 8], durations: ['2n', '2n'] },
+  { notes: [4, 7, 4], positions: [0, 6, 12], durations: ['4n.', '4n.', '4n'] },
+  { notes: [0, 2, 4], positions: [0, 8, 12], durations: ['2n', '4n', '4n'] },
   // Climactic
-  [0, 4, 7, 9, 7, 4, 0],
-  // Question-answer
-  [0, 2, 4, 2, 5, 4, 2],
-  // Ethereal
-  [4, 7, 9, 7, 5, 7, 4],
-  // Dark
-  [0, 1, 3, 1, 0, 3, 5, 3],
-  // Hopeful
-  [0, 4, 5, 7, 9, 7, 5, 4],
-  // Mysterious
-  [0, 5, 3, 7, 5, 2, 0],
-  // Driving
-  [0, 0, 4, 0, 7, 0, 4, 0],
-  // Hypnotic
-  [0, 2, 0, 4, 0, 2, 0, 5],
+  { notes: [7, 9, 7, 5], positions: [0, 4, 8, 12], durations: ['4n', '4n', '4n', '4n'] },
+  // Ethereal - very sparse
+  { notes: [4, 7], positions: [0, 8], durations: ['2n.', '4n.'] },
+  // Dark and minimal
+  { notes: [0, 1], positions: [0, 12], durations: ['2n.', '4n'] },
+  // Rising tension
+  { notes: [0, 2, 4, 5], positions: [0, 4, 8, 12], durations: ['4n', '4n', '4n', '4n'] },
 ];
 
 export function generateMelodyPattern(
@@ -304,62 +281,62 @@ export function generateMelodyPattern(
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
 
-  const baseOctave = Math.max(3, params.octave - 1);
+  const baseOctave = params.octave;
   const scaleNotes = getScaleNotes(params.rootNote, params.scale, baseOctave);
   const upperNotes = getScaleNotes(params.rootNote, params.scale, baseOctave + 1);
   const allNotes = [...scaleNotes, ...upperNotes.slice(0, 5)];
 
-  // Pick phrases based on style
-  let phrasePool: number[][];
+  // Select phrase pool based on style
+  let phraseIndices: number[];
   switch (style) {
     case 'dark':
     case 'industrial':
-      phrasePool = [MELODY_PHRASES[5], MELODY_PHRASES[7]];
+      phraseIndices = [5]; // Dark minimal
       break;
     case 'melodic':
     case 'progressive':
-      phrasePool = [MELODY_PHRASES[0], MELODY_PHRASES[2], MELODY_PHRASES[6]];
+      phraseIndices = [0, 1, 2, 4]; // Emotional, sparse
       break;
     case 'hypnotic':
     case 'minimal':
-      phrasePool = [MELODY_PHRASES[8], MELODY_PHRASES[9]];
+      phraseIndices = [0, 4, 5]; // Very sparse
       break;
     default:
-      phrasePool = MELODY_PHRASES;
+      phraseIndices = [0, 1, 2, 3];
   }
 
-  const notesPerBar = Math.max(2, Math.floor((params.density / 100) * 8));
+  // Density affects how many bars have melody
+  const playEveryNBars = params.density > 70 ? 1 : params.density > 40 ? 2 : 4;
 
   for (let bar = 0; bar < bars; bar++) {
-    const phrase = phrasePool[Math.floor(random() * phrasePool.length)];
+    // Not every bar has melody - creates space
+    if (bar % playEveryNBars !== 0 && random() > 0.3) continue;
 
-    for (let i = 0; i < Math.min(notesPerBar, phrase.length); i++) {
-      const noteIndex = phrase[i] % allNotes.length;
+    const phraseIdx = phraseIndices[Math.floor(random() * phraseIndices.length)];
+    const phrase = MELODY_PHRASES[phraseIdx];
 
-      const basePos = Math.floor((i / notesPerBar) * 16);
-      const variation = params.variation > 50 ? Math.floor(random() * 3) - 1 : 0;
-      const position = Math.max(0, Math.min(15, basePos + variation));
+    for (let i = 0; i < phrase.notes.length; i++) {
+      if (random() > 0.85) continue; // Occasional note skip
 
-      const beat = Math.floor(position / 4);
-      const sixteenth = position % 4;
-
-      // Varied durations
-      const durations = ['4n', '4n.', '2n', '8n.', '4n'];
-      const duration = durations[Math.floor(random() * durations.length)];
+      const noteIndex = phrase.notes[i] % allNotes.length;
+      const pos = phrase.positions[i];
+      const beat = Math.floor(pos / 4);
+      const sixteenth = pos % 4;
 
       events.push({
         note: allNotes[noteIndex],
         time: `${bar}:${beat}:${sixteenth}`,
-        duration,
-        velocity: 0.45 + random() * 0.3,
+        duration: phrase.durations[i],
+        velocity: 0.4 + random() * 0.2,
       });
     }
   }
 
-  return events.sort((a, b) => parseTime(a.time) - parseTime(b.time));
+  return events;
 }
 
 // ========== ARPEGGIATOR PATTERNS ==========
+// Much sparser - leave rhythmic space
 const ARP_PATTERNS: Record<string, number[]> = {
   up: [0, 2, 4, 7],
   down: [7, 4, 2, 0],
@@ -392,42 +369,43 @@ export function generateArpPattern(
   const patternType = arpParams.pattern;
 
   if (patternType === 'random') {
-    pattern = Array.from({ length: 8 }, () => Math.floor(random() * 7));
+    pattern = Array.from({ length: 4 }, () => Math.floor(random() * 5));
   } else {
     pattern = ARP_PATTERNS[patternType] || ARP_PATTERNS.up;
   }
 
-  // Speed determines notes per bar
-  const notesPerBar = Math.floor(4 + (arpParams.speed / 100) * 12);
-  const stepSize = Math.max(1, Math.floor(16 / notesPerBar));
+  // MUCH fewer notes - 4-8 per bar max, not 16
+  const notesPerBar = Math.max(4, Math.min(8, Math.floor(4 + (arpParams.speed / 100) * 4)));
+
+  // Leave gaps - don't play every bar
+  const playEveryNBars = arpParams.speed > 60 ? 1 : 2;
 
   for (let bar = 0; bar < bars; bar++) {
+    // Skip some bars for breathing room
+    if (bar % playEveryNBars !== 0 && random() > 0.4) continue;
+
     for (let i = 0; i < notesPerBar; i++) {
       const noteIdx = pattern[i % pattern.length] % allNotes.length;
-      const position = i * stepSize;
 
+      // Position with more space
+      const position = i * Math.floor(16 / notesPerBar);
       if (position >= 16) break;
 
       const beat = Math.floor(position / 4);
       const sixteenth = position % 4;
 
       // Gate affects duration
-      const durations = ['32n', '16n', '8n'];
+      const durations = ['16n', '8n', '8n.'];
       const durIdx = Math.min(2, Math.floor((arpParams.gate / 100) * 3));
 
-      // Swing
-      let swingOffset = 0;
-      if (arpParams.swing > 0 && i % 2 === 1) {
-        swingOffset = (arpParams.swing / 100) * 0.02;
-      }
-
-      const velocityBase = i % 4 === 0 ? 0.5 : 0.35;
+      // Accent on downbeats
+      const velocityBase = i % 4 === 0 ? 0.45 : 0.3;
 
       events.push({
         note: allNotes[noteIdx],
         time: `${bar}:${beat}:${sixteenth}`,
         duration: durations[durIdx],
-        velocity: velocityBase + random() * 0.2,
+        velocity: velocityBase + random() * 0.15,
       });
     }
   }
@@ -436,6 +414,7 @@ export function generateArpPattern(
 }
 
 // ========== PLUCK PATTERNS ==========
+// Sparse accents, not continuous
 export function generatePluckPattern(
   bars: number,
   root: string,
@@ -450,30 +429,32 @@ export function generatePluckPattern(
   const upperNotes = getScaleNotes(root, scale, params.octave + 1);
   const allNotes = [...scaleNotes, ...upperNotes.slice(0, 3)];
 
-  // Pluck patterns - more sparse, melodic
-  const pluckPhrases = [
-    [0, 4, 7],
-    [0, 2, 4, 7],
-    [4, 7, 9, 7],
-    [0, 0, 4, 7],
-    [7, 4, 0],
+  // Pluck on specific positions - accent moments
+  const pluckPositions = [
+    [0, 12],        // On beat 1 and 4
+    [0, 8],         // Minimal
+    [4, 12],        // Offbeat accents
+    [0],            // Very minimal
   ];
 
-  for (let bar = 0; bar < bars; bar++) {
-    const phrase = pluckPhrases[Math.floor(random() * pluckPhrases.length)];
-    const notesThisBar = Math.floor(2 + random() * (intensity / 30));
+  const posPattern = pluckPositions[Math.floor(random() * pluckPositions.length)];
 
-    for (let i = 0; i < Math.min(notesThisBar, phrase.length); i++) {
-      const noteIdx = phrase[i] % allNotes.length;
-      const position = Math.floor(random() * 16);
-      const beat = Math.floor(position / 4);
-      const sixteenth = position % 4;
+  for (let bar = 0; bar < bars; bar++) {
+    // Only play every 2-4 bars
+    if (bar % 2 !== 0 && random() > 0.3) continue;
+
+    for (const pos of posPattern) {
+      if (random() * 100 > intensity) continue;
+
+      const noteIdx = Math.floor(random() * 5) % allNotes.length;
+      const beat = Math.floor(pos / 4);
+      const sixteenth = pos % 4;
 
       events.push({
         note: allNotes[noteIdx],
         time: `${bar}:${beat}:${sixteenth}`,
-        duration: '8n',
-        velocity: 0.4 + random() * 0.25,
+        duration: '4n',
+        velocity: 0.35 + random() * 0.2,
       });
     }
   }
@@ -482,6 +463,7 @@ export function generatePluckPattern(
 }
 
 // ========== STAB PATTERNS ==========
+// Occasional chord stabs - tension moments
 export function generateStabPattern(
   bars: number,
   root: string,
@@ -494,23 +476,18 @@ export function generateStabPattern(
   const events: NoteEvent[] = [];
   const scaleNotes = getScaleNotes(root, scale, 3);
 
-  // Stabs are punchy chord hits
-  const stabPositions = [
-    [0, 8], // Basic
-    [0, 6, 12], // Syncopated
-    [4, 12], // Offbeat
-    [0, 4, 8, 12], // Regular
-    [2, 10], // Offbeat minimal
-  ];
-
-  const positions = stabPositions[Math.floor(random() * stabPositions.length)];
+  // Stabs only every 4-8 bars, not every bar
+  const stabEveryNBars = intensity > 70 ? 4 : 8;
 
   for (let bar = 0; bar < bars; bar++) {
+    // Only stab occasionally
+    if (bar % stabEveryNBars !== 0) continue;
     if (random() * 100 > intensity) continue;
 
-    for (const pos of positions) {
-      if (random() > 0.7) continue;
+    // Pick position - usually beat 1 or an offbeat
+    const positions = random() > 0.5 ? [0] : [4];
 
+    for (const pos of positions) {
       const beat = Math.floor(pos / 4);
       const sixteenth = pos % 4;
 
@@ -521,8 +498,8 @@ export function generateStabPattern(
         events.push({
           note,
           time: `${bar}:${beat}:${sixteenth}`,
-          duration: '16n',
-          velocity: 0.5 + random() * 0.2,
+          duration: '8n',
+          velocity: 0.4 + random() * 0.15,
         });
       });
     }
@@ -532,6 +509,7 @@ export function generateStabPattern(
 }
 
 // ========== PIANO PATTERNS ==========
+// Sparse, emotional chords - breakdown material
 export function generatePianoPattern(
   bars: number,
   root: string,
@@ -546,47 +524,38 @@ export function generatePianoPattern(
   const scaleNotes = getScaleNotes(root, scale, octave);
   const upperNotes = getScaleNotes(root, scale, octave + 1);
 
-  // Piano patterns - more melodic and chord-based
+  // Simple chord progressions - one chord per 2-4 bars
   const chordProgressions = [
     [[0, 2, 4], [3, 5, 0], [4, 6, 1], [0, 2, 4]],
     [[0, 2, 4], [5, 0, 2], [3, 5, 0], [0, 2, 4]],
-    [[0, 4, 7], [2, 5, 9], [4, 7, 11], [0, 4, 7]],
   ];
 
   const progression = chordProgressions[Math.floor(random() * chordProgressions.length)];
-  const barsPerChord = Math.max(1, Math.floor(bars / progression.length));
+  const barsPerChord = Math.max(2, Math.floor(bars / progression.length));
 
   for (let i = 0; i < progression.length && i * barsPerChord < bars; i++) {
     const chord = progression[i];
     const barStart = i * barsPerChord;
 
-    // Add some rhythmic variation
-    const positions = random() > 0.5 ? [0, 8] : [0, 4, 8, 12];
+    // Just hit the chord once per section
+    chord.forEach((noteIdx, voiceIdx) => {
+      const notes = voiceIdx < 2 ? scaleNotes : upperNotes;
+      const note = notes[noteIdx % notes.length];
 
-    for (const pos of positions) {
-      if (random() > 0.7 && pos > 0) continue;
-
-      const beat = Math.floor(pos / 4);
-      const sixteenth = pos % 4;
-
-      chord.forEach((noteIdx, voiceIdx) => {
-        const notes = voiceIdx < 2 ? scaleNotes : upperNotes;
-        const note = notes[noteIdx % notes.length];
-
-        events.push({
-          note,
-          time: `${barStart}:${beat}:${sixteenth}`,
-          duration: random() > 0.5 ? '4n' : '8n',
-          velocity: (params.velocity / 100) * (0.5 + random() * 0.2),
-        });
+      events.push({
+        note,
+        time: `${barStart}:0:0`,
+        duration: '1m',
+        velocity: (params.velocity / 100) * (0.4 + random() * 0.15),
       });
-    }
+    });
   }
 
   return events;
 }
 
 // ========== STRINGS PATTERNS ==========
+// Long sustained pads - background texture
 export function generateStringsPattern(
   bars: number,
   root: string,
@@ -600,29 +569,22 @@ export function generateStringsPattern(
   const scaleNotes = getScaleNotes(root, scale, 3);
   const upperNotes = getScaleNotes(root, scale, 4);
 
-  // Long, sustained chord progressions
-  const progressions = [
-    [[0, 2, 4], [5, 0, 2], [3, 5, 0]],
-    [[0, 4, 7], [2, 5, 9], [0, 4, 7]],
-    [[0, 2, 4, 6], [0, 2, 4, 6]],
-  ];
+  // Very long, sustained chords
+  const chord = [0, 2, 4]; // Simple triad
+  const barsPerChord = Math.max(4, Math.floor(bars / 2));
 
-  const progression = progressions[Math.floor(random() * progressions.length)];
-  const barsPerChord = Math.max(2, Math.floor(bars / progression.length));
-
-  for (let i = 0; i < progression.length && i * barsPerChord < bars; i++) {
-    const chord = progression[i];
+  for (let i = 0; i * barsPerChord < bars; i++) {
     const barStart = i * barsPerChord;
 
     chord.forEach((noteIdx, voiceIdx) => {
-      const notes = voiceIdx < chord.length / 2 ? scaleNotes : upperNotes;
+      const notes = voiceIdx < 2 ? scaleNotes : upperNotes;
       const note = notes[noteIdx % notes.length];
 
       events.push({
         note,
         time: `${barStart}:0:0`,
-        duration: `${barsPerChord}m`,
-        velocity: 0.35 + random() * 0.15,
+        duration: `${Math.min(barsPerChord, bars - barStart)}m`,
+        velocity: 0.25 + random() * 0.1,
       });
     });
   }
@@ -631,6 +593,7 @@ export function generateStringsPattern(
 }
 
 // ========== PAD PATTERNS ==========
+// Atmospheric bed - evolves slowly
 export function generatePadPattern(
   bars: number,
   root: string,
@@ -645,23 +608,20 @@ export function generatePadPattern(
   const upperNotes = getScaleNotes(root, scale, 3);
 
   // Chord voicings based on chord type
-  const chordVoicings: Record<typeof params.chord, number[][]> = {
-    minor: [[0, 2, 4], [0, 2, 4, 6]],
-    major: [[0, 2, 4], [0, 2, 4, 6]],
-    sus4: [[0, 3, 4], [0, 3, 4, 6]],
-    sus2: [[0, 1, 4], [0, 1, 4, 6]],
-    dim: [[0, 2, 3], [0, 2, 3, 5]],
-    aug: [[0, 2, 5], [0, 2, 5, 7]],
-    add9: [[0, 1, 2, 4], [0, 2, 4, 8]],
-    minor7: [[0, 2, 4, 6], [0, 2, 4, 6]],
-    major7: [[0, 2, 4, 6], [0, 2, 4, 6]],
+  const chordVoicings: Record<typeof params.chord, number[]> = {
+    minor: [0, 2, 4],
+    major: [0, 2, 4],
+    sus4: [0, 3, 4],
+    sus2: [0, 1, 4],
+    dim: [0, 2, 3],
+    aug: [0, 2, 5],
+    add9: [0, 2, 4, 8],
+    minor7: [0, 2, 4, 6],
+    major7: [0, 2, 4, 6],
   };
 
-  const voicings = chordVoicings[params.chord] || chordVoicings.minor;
-  const voicing = voicings[Math.floor(random() * voicings.length)];
-
-  // One chord every 2-4 bars
-  const barsPerChord = Math.max(2, Math.floor(bars / 3));
+  const voicing = chordVoicings[params.chord] || chordVoicings.minor;
+  const barsPerChord = Math.max(4, Math.floor(bars / 2));
 
   for (let i = 0; i * barsPerChord < bars; i++) {
     const barStart = i * barsPerChord;
@@ -674,7 +634,7 @@ export function generatePadPattern(
         note,
         time: `${barStart}:0:0`,
         duration: `${Math.min(barsPerChord, bars - barStart)}m`,
-        velocity: 0.3 + random() * 0.15,
+        velocity: 0.25 + random() * 0.1,
       });
     });
   }
@@ -683,13 +643,14 @@ export function generatePadPattern(
 }
 
 // ========== HIHAT PATTERNS ==========
+// Clean, groovy hi-hats - complement the kick
 const HIHAT_PATTERNS = {
-  straight: { closed: [2, 6, 10, 14], open: [] },
-  offbeat: { closed: [2, 6, 10, 14], open: [6, 14] },
-  shuffle: { closed: [2, 5, 6, 10, 13, 14], open: [6, 14] },
-  complex: { closed: [0, 2, 4, 6, 8, 10, 12, 14], open: [4, 12] },
-  minimal: { closed: [2, 10], open: [] },
-  rolling: { closed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], open: [4, 12] },
+  straight: { closed: [2, 6, 10, 14], open: [] },         // Classic offbeat
+  offbeat: { closed: [2, 6, 10, 14], open: [14] },        // With open hat accent
+  shuffle: { closed: [2, 5, 10, 13], open: [6, 14] },     // Shuffled feel
+  complex: { closed: [2, 4, 6, 10, 12, 14], open: [6] },  // Busier
+  minimal: { closed: [6, 14], open: [] },                 // Very minimal
+  rolling: { closed: [2, 4, 6, 8, 10, 12, 14], open: [8] }, // Driving
 };
 
 export function generateHihatPattern(
@@ -704,7 +665,7 @@ export function generateHihatPattern(
 
   // Select pattern based on style
   let patternName = params.pattern;
-  if (style === 'minimal') patternName = 'minimal';
+  if (style === 'minimal' || style === 'hypnotic') patternName = 'minimal';
   if (style === 'industrial') patternName = 'rolling';
 
   const pattern = HIHAT_PATTERNS[patternName] || HIHAT_PATTERNS.straight;
@@ -712,24 +673,23 @@ export function generateHihatPattern(
   for (let bar = 0; bar < bars; bar++) {
     // Closed hats
     for (const pos of pattern.closed) {
-      if (random() * 100 > intensity * 1.2) continue;
+      if (random() * 100 > intensity * 1.3) continue;
 
       const beat = Math.floor(pos / 4);
       const sixteenth = pos % 4;
-      const isOffbeat = pos % 4 === 2;
 
       events.push({
         note: 'C5',
         time: `${bar}:${beat}:${sixteenth}`,
         duration: '32n',
-        velocity: (isOffbeat ? 0.55 : 0.4 + random() * 0.15) * (params.velocity / 100),
+        velocity: (0.35 + random() * 0.15) * (params.velocity / 100),
       });
     }
 
-    // Open hats
+    // Open hats - sparser
     if (params.openRatio > 0) {
       for (const pos of pattern.open) {
-        if (random() * 100 > params.openRatio) continue;
+        if (random() * 100 > params.openRatio * 0.5) continue;
 
         const beat = Math.floor(pos / 4);
         const sixteenth = pos % 4;
@@ -738,7 +698,7 @@ export function generateHihatPattern(
           note: 'open',
           time: `${bar}:${beat}:${sixteenth}`,
           duration: '8n',
-          velocity: 0.35 + random() * 0.15,
+          velocity: 0.3 + random() * 0.1,
         });
       }
     }
@@ -748,6 +708,7 @@ export function generateHihatPattern(
 }
 
 // ========== PERCUSSION PATTERNS ==========
+// Claps and snares on 2 and 4 - the backbeat
 export function generatePercPattern(
   bars: number,
   params: PercParams,
@@ -758,21 +719,20 @@ export function generatePercPattern(
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
 
-  // Clap patterns
+  // Standard backbeat on 2 and 4 (positions 4 and 12)
   const clapPositions = {
-    sparse: [4, 12],
-    regular: [4, 12],
-    busy: [4, 8, 12],
-    fill: [4, 6, 10, 12, 14],
+    sparse: [4],             // Just beat 2
+    regular: [4, 12],        // Beats 2 and 4
+    busy: [4, 12, 14],       // With pickup
+    fill: [4, 6, 12, 14],    // Fuller groove
   };
 
-  const positions = clapPositions[params.pattern];
+  const positions = clapPositions[params.pattern] || clapPositions.regular;
 
   for (let bar = 0; bar < bars; bar++) {
-    // Claps
     if (params.type === 'clap' || params.type === 'snare') {
       for (const pos of positions) {
-        if (random() * 100 > intensity) continue;
+        if (random() * 100 > intensity * 1.1) continue;
 
         const beat = Math.floor(pos / 4);
         const sixteenth = pos % 4;
@@ -781,42 +741,34 @@ export function generatePercPattern(
           note: 'clap',
           time: `${bar}:${beat}:${sixteenth}`,
           duration: '16n',
-          velocity: 0.5 + random() * 0.2,
+          velocity: 0.5 + random() * 0.15,
         });
       }
     }
 
-    // Rim shots
-    if (params.type === 'rim' && random() > 0.3) {
-      const rimPositions = [6, 14];
-      for (const pos of rimPositions) {
+    // Rim - very sparse accent
+    if (params.type === 'rim' && bar % 4 === 3 && random() > 0.5) {
+      events.push({
+        note: 'rim',
+        time: `${bar}:3:2`,
+        duration: '32n',
+        velocity: 0.35,
+      });
+    }
+
+    // Shaker - subtle texture
+    if (params.type === 'shaker') {
+      for (const pos of [2, 6, 10, 14]) {
         if (random() > 0.6) continue;
 
         const beat = Math.floor(pos / 4);
         const sixteenth = pos % 4;
 
         events.push({
-          note: 'rim',
-          time: `${bar}:${beat}:${sixteenth}`,
-          duration: '32n',
-          velocity: 0.4 + random() * 0.2,
-        });
-      }
-    }
-
-    // Shaker
-    if (params.type === 'shaker') {
-      for (let i = 0; i < 16; i += 2) {
-        if (random() > 0.7) continue;
-
-        const beat = Math.floor(i / 4);
-        const sixteenth = i % 4;
-
-        events.push({
           note: 'shaker',
           time: `${bar}:${beat}:${sixteenth}`,
           duration: '32n',
-          velocity: 0.25 + random() * 0.15,
+          velocity: 0.2 + random() * 0.1,
         });
       }
     }
@@ -825,14 +777,62 @@ export function generatePercPattern(
   return events;
 }
 
-// ========== HELPER FUNCTIONS ==========
+// ========== VOCAL PATTERNS ==========
+// Ethereal "ooh/aah" style vocal patterns - sparse and emotional
+export function generateVocalPattern(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: VocalParams,
+  style: TechnoStyle,
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
 
-function durationToSixteenths(duration: string): number {
-  const map: Record<string, number> = {
-    '32n': 0.5, '16n': 1, '8n': 2, '8n.': 3, '4n': 4, '4n.': 6, '2n': 8, '2n.': 12, '1m': 16,
-  };
-  return map[duration] || 2;
+  // Vocals use higher octaves for that ethereal feel
+  const octave = params.gender === 'male' ? 2 : params.gender === 'female' ? 4 : 3;
+  const scaleNotes = getScaleNotes(root, scale, octave);
+  const upperNotes = getScaleNotes(root, scale, octave + 1);
+
+  // Very sparse - vocals are special, used for emphasis
+  // Only play every 4-8 bars
+  const playEveryNBars = style === 'melodic' || style === 'progressive' ? 4 : 8;
+
+  // Simple chord progressions for vocal pads
+  const vocalChords = [
+    [0, 2, 4],     // Simple triad
+    [0, 4, 7],     // Root, 5th, octave feel
+    [2, 4, 7],     // 2nd inversion
+  ];
+
+  for (let bar = 0; bar < bars; bar++) {
+    // Only play on certain bars
+    if (bar % playEveryNBars !== 0) continue;
+    if (random() > 0.7) continue; // Even sparser
+
+    const chord = vocalChords[Math.floor(random() * vocalChords.length)];
+    const notes = params.gender === 'both'
+      ? chord.map(i => [scaleNotes[i % scaleNotes.length], upperNotes[i % upperNotes.length]]).flat()
+      : chord.map(i => scaleNotes[i % scaleNotes.length]);
+
+    // Long, sustained notes
+    const duration = random() > 0.5 ? '2m' : '1m';
+
+    notes.forEach((note, i) => {
+      events.push({
+        note,
+        time: `${bar}:0:0`,
+        duration,
+        velocity: 0.25 + random() * 0.1 - (i * 0.02), // Slightly lower velocity for upper notes
+      });
+    });
+  }
+
+  return events;
 }
+
+// ========== HELPER FUNCTIONS ==========
 
 function parseTime(time: string): number {
   const [bar, beat, sixteenth] = time.split(':').map(Number);
@@ -855,6 +855,7 @@ export interface AllPatterns {
   hihat: NoteEvent[];
   openhat: NoteEvent[];
   perc: NoteEvent[];
+  vocal: NoteEvent[];
 }
 
 export function generateSectionPatterns(
@@ -875,6 +876,7 @@ export function generateSectionPatterns(
   acidParams: AcidParams,
   percParams: PercParams,
   arpParams: ArpParams,
+  vocalParams: VocalParams,
   seed: number
 ): AllPatterns {
   const melodyWithRoot = { ...melodyParams, rootNote: root, scale };
@@ -915,10 +917,13 @@ export function generateSectionPatterns(
       : [],
     openhat: section.hasHihat && hihatParams.openRatio > 30
       ? generateHihatPattern(section.bars, { ...hihatParams, pattern: 'offbeat' }, section.intensity, style, seed + 6500)
-        .filter(e => e.note === 'open')
+          .filter(e => e.note === 'open')
       : [],
     perc: section.hasPerc
       ? generatePercPattern(section.bars, percParams, section.intensity, style, seed + 7000)
+      : [],
+    vocal: section.hasVocal
+      ? generateVocalPattern(section.bars, root, scale, vocalParams, style, seed + 8000)
       : [],
   };
 }
