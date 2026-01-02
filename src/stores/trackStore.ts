@@ -81,7 +81,11 @@ interface TrackStore extends TrackState {
   addSection: (section: SectionConfig) => void;
   removeSection: (index: number) => void;
   reorderSections: (sections: SectionConfig[]) => void;
+  setSections: (sections: SectionConfig[]) => void;
   randomizeSections: () => void;
+
+  // AI Composer integration
+  applyComposerPlan: (plan: import('@/types/composer').ComposerPlan) => void;
 
   // Random generation - MASSIVE variety
   randomizeAll: () => void;
@@ -297,6 +301,8 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
     })),
 
   reorderSections: (sections) => set({ sections }),
+
+  setSections: (sections) => set({ sections }),
 
   randomizeSections: () => {
     // ========== KA:ST ARRANGEMENT RULES ==========
@@ -755,6 +761,124 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
         pattern: randomChoice(['sparse', 'regular', 'busy'] as const),
       },
     }),
+
+  // Apply AI Composer Plan - converts ComposerPlan to store state
+  applyComposerPlan: (plan) => {
+    // Helper to map allowed_layers to section config flags
+    const mapLayersToFlags = (layers: string[]) => ({
+      hasKick: layers.includes('kick'),
+      hasBass: layers.includes('bass'),
+      hasMelody: layers.includes('melody'),
+      hasHihat: layers.includes('hihat'),
+      hasPad: layers.includes('pad'),
+      hasPluck: layers.includes('pluck'),
+      hasStab: layers.includes('stab'),
+      hasPiano: layers.includes('piano'),
+      hasStrings: layers.includes('strings'),
+      hasAcid: layers.includes('acid'),
+      hasPerc: layers.includes('perc'),
+      hasFx: layers.includes('fx'),
+      hasArp: layers.includes('arp'),
+      hasVocal: layers.includes('vocal'),
+    });
+
+    // Map focus to intensity
+    const focusToIntensity: Record<string, number> = {
+      space: 25,
+      groove: 55,
+      tension: 70,
+      emotion: 40,
+      release: 90,
+    };
+
+    // Convert sections from ComposerPlan to SectionConfig[]
+    const sections: SectionConfig[] = plan.sections.map((section, index) => ({
+      type: section.type,
+      bars: section.bars,
+      intensity: plan.energy_curve[index]
+        ? plan.energy_curve[index] * 10
+        : focusToIntensity[section.focus] || 50,
+      ...mapLayersToFlags(section.allowed_layers),
+    }));
+
+    // Map scale string to Scale type
+    const mapScale = (s: string): Scale => {
+      const validScales: Scale[] = [
+        'minor', 'major', 'phrygian', 'harmonicMinor', 'melodicMinor',
+        'dorian', 'locrian', 'lydian', 'mixolydian', 'pentatonicMinor',
+        'pentatonicMajor', 'blues', 'wholeNote', 'chromatic', 'arabic', 'japanese',
+      ];
+      return validScales.includes(s as Scale) ? (s as Scale) : 'minor';
+    };
+
+    // Map groove string to GrooveType
+    const mapGroove = (g: string): GrooveType => {
+      const validGrooves: GrooveType[] = ['straight', 'shuffle', 'syncopated', 'broken', 'halftime'];
+      return validGrooves.includes(g as GrooveType) ? (g as GrooveType) : 'straight';
+    };
+
+    // Map style string to TechnoStyle
+    const mapStyle = (s: string): TechnoStyle => {
+      if (s.includes('kast') || s.includes('underground')) return 'melodic';
+      if (s.includes('anyma')) return 'progressive';
+      return 'melodic';
+    };
+
+    // Apply all settings
+    set({
+      bpm: plan.bpm,
+      key: plan.key,
+      scale: mapScale(plan.scale),
+      secondaryScale: plan.scale === 'minor' ? 'phrygian' : 'minor',
+      style: mapStyle(plan.style),
+      groove: mapGroove(plan.groove),
+      sections,
+    });
+
+    // Apply instrument targets if provided
+    // Use type assertions since the AI output is validated but types are partial
+    const targets = plan.instrument_targets;
+
+    if (targets.kick && Object.keys(targets.kick).length > 0) {
+      set((state) => ({ kick: { ...state.kick, ...(targets.kick as Partial<KickParams>) } }));
+    }
+    if (targets.bass && Object.keys(targets.bass).length > 0) {
+      set((state) => ({ bass: { ...state.bass, ...(targets.bass as Partial<BassParams>) } }));
+    }
+    if (targets.melody && Object.keys(targets.melody).length > 0) {
+      set((state) => ({ melody: { ...state.melody, ...(targets.melody as Partial<MelodyParams>) } }));
+    }
+    if (targets.hihat && Object.keys(targets.hihat).length > 0) {
+      set((state) => ({ hihat: { ...state.hihat, ...(targets.hihat as Partial<HiHatParams>) } }));
+    }
+    if (targets.pad && Object.keys(targets.pad).length > 0) {
+      set((state) => ({ pad: { ...state.pad, ...(targets.pad as Partial<PadParams>) } }));
+    }
+    if (targets.arp && Object.keys(targets.arp).length > 0) {
+      set((state) => ({ arp: { ...state.arp, ...(targets.arp as Partial<ArpParams>) } }));
+    }
+    if (targets.pluck && Object.keys(targets.pluck).length > 0) {
+      set((state) => ({ pluck: { ...state.pluck, ...(targets.pluck as Partial<PluckParams>) } }));
+    }
+    if (targets.stab && Object.keys(targets.stab).length > 0) {
+      set((state) => ({ stab: { ...state.stab, ...(targets.stab as Partial<StabParams>) } }));
+    }
+    if (targets.piano && Object.keys(targets.piano).length > 0) {
+      set((state) => ({ piano: { ...state.piano, ...(targets.piano as Partial<PianoParams>) } }));
+    }
+    if (targets.strings && Object.keys(targets.strings).length > 0) {
+      set((state) => ({ strings: { ...state.strings, ...(targets.strings as Partial<StringsParams>) } }));
+    }
+    if (targets.acid && Object.keys(targets.acid).length > 0) {
+      set((state) => ({ acid: { ...state.acid, ...(targets.acid as Partial<AcidParams>) } }));
+    }
+    if (targets.perc && Object.keys(targets.perc).length > 0) {
+      set((state) => ({ perc: { ...state.perc, ...(targets.perc as Partial<PercParams>) } }));
+    }
+    if (targets.vocal && Object.keys(targets.vocal).length > 0) {
+      set((state) => ({ vocal: { ...state.vocal, ...(targets.vocal as Partial<VocalParams>) } }));
+    }
+  },
 
   reset: () => set(DEFAULT_STATE),
 }));
