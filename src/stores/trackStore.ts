@@ -22,14 +22,29 @@ import type {
   GrooveType,
   KickStyle,
   BassType,
+  ChordProgression,
 } from '@/types';
 import { RANDOM_POOLS, DEFAULT_SECTIONS, DEFAULT_VOCAL } from '@/types';
+
+// Chord progressions pool for randomization
+const CHORD_PROGRESSIONS: ChordProgression[] = [
+  'i-VI-III-VII',   // Classic emotional minor
+  'i-VII-VI-VII',   // Dark repetitive
+  'i-iv',           // Minimal hypnotic (2 chords)
+  'i-VI-iv-VII',    // Tale Of Us style
+  'i-III-VII-VI',   // Afterlife style
+  'i-VII-i-VI',     // Hypnotic minimal
+  'i-VI',           // Super minimal (2 chords)
+  'i-iv-VII-III',   // Dark melodic
+];
 
 interface TrackStore extends TrackState {
   // Setters
   setBPM: (bpm: number) => void;
   setKey: (key: string) => void;
   setScale: (scale: Scale) => void;
+  setSecondaryScale: (scale: Scale) => void;
+  setChordProgression: (prog: ChordProgression) => void;
   setStyle: (style: TechnoStyle) => void;
   setGroove: (groove: GrooveType) => void;
   setMasterVolume: (volume: number) => void;
@@ -68,9 +83,11 @@ interface TrackStore extends TrackState {
 }
 
 const DEFAULT_STATE: TrackState = {
-  bpm: 126,
+  bpm: 122,
   key: 'A',
   scale: 'minor',
+  secondaryScale: 'phrygian', // Secondary scale for variety
+  chordProgression: 'i-VI-III-VII', // Classic emotional progression
   style: 'melodic',
   groove: 'straight',
   masterVolume: 80,
@@ -207,6 +224,8 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
   setBPM: (bpm) => set({ bpm }),
   setKey: (key) => set({ key }),
   setScale: (scale) => set({ scale }),
+  setSecondaryScale: (secondaryScale) => set({ secondaryScale }),
+  setChordProgression: (chordProgression) => set({ chordProgression }),
   setStyle: (style) => set({ style }),
   setGroove: (groove) => set({ groove }),
   setMasterVolume: (masterVolume) => set({ masterVolume }),
@@ -268,43 +287,155 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
   reorderSections: (sections) => set({ sections }),
 
   randomizeSections: () => {
-    const sectionTypes = ['intro', 'buildup', 'drop', 'breakdown', 'bridge', 'outro'] as const;
-    const numSections = randomRange(4, 8);
+    // Generate proper 16/32 bar phrase structure (Afterlife/melodic techno style)
     const sections: SectionConfig[] = [];
 
-    for (let i = 0; i < numSections; i++) {
-      const isFirst = i === 0;
-      const isLast = i === numSections - 1;
-      let type = randomChoice([...sectionTypes]);
+    // Intro - always 16 bars, atmospheric
+    sections.push({
+      type: 'intro',
+      bars: 16,
+      hasKick: false,
+      hasBass: false,
+      hasMelody: false,
+      hasHihat: Math.random() > 0.7,
+      hasPad: true,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: Math.random() > 0.5,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: true,
+      hasArp: false,
+      hasVocal: Math.random() > 0.5,
+      intensity: randomRange(15, 30),
+    });
 
-      if (isFirst) type = 'intro';
-      if (isLast) type = 'outro';
+    // Buildup - 16 bars
+    sections.push({
+      type: 'buildup',
+      bars: 16,
+      hasKick: true,
+      hasBass: true,
+      hasMelody: false,
+      hasHihat: true,
+      hasPad: Math.random() > 0.4,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: false,
+      hasPerc: true,
+      hasFx: true,
+      hasArp: Math.random() > 0.5,
+      hasVocal: Math.random() > 0.5,
+      intensity: randomRange(50, 70),
+    });
 
-      const intensity = type === 'drop' ? randomRange(80, 100) :
-                       type === 'breakdown' ? randomRange(20, 40) :
-                       type === 'buildup' ? randomRange(50, 70) :
-                       randomRange(30, 60);
+    // Drop 1 - 32 bars, full energy
+    sections.push({
+      type: 'drop',
+      bars: 32,
+      hasKick: true,
+      hasBass: true,
+      hasMelody: true,
+      hasHihat: true,
+      hasPad: false,
+      hasPluck: Math.random() > 0.4,
+      hasStab: Math.random() > 0.6,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: Math.random() > 0.8,
+      hasPerc: true,
+      hasFx: false,
+      hasArp: Math.random() > 0.4,
+      hasVocal: Math.random() > 0.5,
+      intensity: 100,
+    });
 
-      sections.push({
-        type,
-        bars: randomChoice([4, 8, 8, 16, 16]),
-        hasKick: type !== 'intro' && type !== 'breakdown' && Math.random() > 0.2,
-        hasBass: type !== 'intro' && Math.random() > 0.3,
-        hasMelody: type === 'drop' || type === 'breakdown' || Math.random() > 0.5,
-        hasHihat: Math.random() > 0.3,
-        hasPad: type === 'intro' || type === 'breakdown' || type === 'outro' || Math.random() > 0.6,
-        hasPluck: type === 'drop' && Math.random() > 0.5,
-        hasStab: type === 'drop' && Math.random() > 0.6,
-        hasPiano: type === 'breakdown' && Math.random() > 0.5,
-        hasStrings: (type === 'intro' || type === 'breakdown') && Math.random() > 0.4,
-        hasAcid: Math.random() > 0.8,
-        hasPerc: type !== 'breakdown' && Math.random() > 0.4,
-        hasFx: (type === 'buildup' || type === 'intro') && Math.random() > 0.3,
-        hasArp: (type === 'drop' || type === 'buildup') && Math.random() > 0.4,
-        hasVocal: (type === 'breakdown' || type === 'buildup' || type === 'drop') && Math.random() > 0.5,
-        intensity,
-      });
-    }
+    // Breakdown - 16 bars, emotional moment
+    sections.push({
+      type: 'breakdown',
+      bars: 16,
+      hasKick: false,
+      hasBass: false,
+      hasMelody: true,
+      hasHihat: false,
+      hasPad: true,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: Math.random() > 0.5,
+      hasStrings: true,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: true,
+      hasArp: false,
+      hasVocal: true,
+      intensity: randomRange(25, 40),
+    });
+
+    // Build back - 8 bars
+    sections.push({
+      type: 'buildup',
+      bars: 8,
+      hasKick: true,
+      hasBass: true,
+      hasMelody: false,
+      hasHihat: true,
+      hasPad: false,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: false,
+      hasPerc: true,
+      hasFx: true,
+      hasArp: true,
+      hasVocal: false,
+      intensity: randomRange(60, 80),
+    });
+
+    // Drop 2 - 32 bars
+    sections.push({
+      type: 'drop',
+      bars: 32,
+      hasKick: true,
+      hasBass: true,
+      hasMelody: true,
+      hasHihat: true,
+      hasPad: false,
+      hasPluck: Math.random() > 0.5,
+      hasStab: Math.random() > 0.5,
+      hasPiano: false,
+      hasStrings: false,
+      hasAcid: Math.random() > 0.7,
+      hasPerc: true,
+      hasFx: false,
+      hasArp: Math.random() > 0.5,
+      hasVocal: Math.random() > 0.6,
+      intensity: 100,
+    });
+
+    // Outro - 16 bars
+    sections.push({
+      type: 'outro',
+      bars: 16,
+      hasKick: Math.random() > 0.3,
+      hasBass: false,
+      hasMelody: Math.random() > 0.6,
+      hasHihat: Math.random() > 0.5,
+      hasPad: true,
+      hasPluck: false,
+      hasStab: false,
+      hasPiano: false,
+      hasStrings: true,
+      hasAcid: false,
+      hasPerc: false,
+      hasFx: true,
+      hasArp: false,
+      hasVocal: true,
+      intensity: randomRange(20, 35),
+    });
 
     set({ sections });
   },
@@ -315,6 +446,10 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
     const groove = randomChoice(RANDOM_POOLS.grooves);
     const key = randomChoice(RANDOM_POOLS.keys);
     const scale = randomChoice(RANDOM_POOLS.scales);
+    // Secondary scale for 2-scale system (different from primary)
+    const availableSecondaryScales = RANDOM_POOLS.scales.filter(s => s !== scale);
+    const secondaryScale = randomChoice(availableSecondaryScales);
+    const chordProgression = randomChoice(CHORD_PROGRESSIONS);
     const bpm = randomRange(RANDOM_POOLS.bpmRanges.min, RANDOM_POOLS.bpmRanges.max);
 
     // Randomize sections too
@@ -324,6 +459,8 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
       bpm,
       key,
       scale,
+      secondaryScale,
+      chordProgression,
       style,
       groove,
       kick: {

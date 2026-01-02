@@ -324,7 +324,7 @@ class AudioEngine {
       this.vocalReverb = new Tone.Reverb({ decay: 4.5, wet: 0.5 }).connect(this.masterGain);
       this.vocalDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.2, wet: 0.25 }).connect(this.vocalReverb);
       this.vocalChorus = new Tone.Chorus({ frequency: 2, depth: 0.5, wet: 0.4 }).connect(this.vocalDelay);
-      this.vocalGain = new Tone.Gain(0.28).connect(this.vocalChorus);
+      this.vocalGain = new Tone.Gain(0.45).connect(this.vocalChorus);
 
       // Formant 1 (low)
       this.vocalFilter1 = new Tone.Filter({ frequency: 500, type: 'bandpass', Q: 5 }).connect(this.vocalGain);
@@ -643,7 +643,8 @@ class AudioEngine {
       this.vocalReverb.wet.value = params.reverbMix / 100;
     }
     if (this.vocalGain) {
-      this.vocalGain.gain.value = 0.2 + (params.mix / 100) * 0.15;
+      // Increased gain for more audible vocals
+      this.vocalGain.gain.value = 0.35 + (params.mix / 100) * 0.25;
     }
   }
 
@@ -766,13 +767,13 @@ class AudioEngine {
   playVocal(notes: string | string[], duration: string, time?: number, velocity?: number) {
     if (!this.vocalSynth1 || !this.vocalSynth2 || !this.vocalSynth3) return;
     const t = time ?? Tone.now();
-    const v = velocity ?? 0.35;
+    const v = velocity ?? 0.55; // Increased default velocity
     const notesArr = Array.isArray(notes) ? notes : [notes];
 
     // All three formant layers play the same notes
     this.vocalSynth1.triggerAttackRelease(notesArr, duration, t, v);
-    this.vocalSynth2.triggerAttackRelease(notesArr, duration, t + 0.02, v * 0.8);
-    this.vocalSynth3.triggerAttackRelease(notesArr, duration, t + 0.04, v * 0.5);
+    this.vocalSynth2.triggerAttackRelease(notesArr, duration, t + 0.02, v * 0.85);
+    this.vocalSynth3.triggerAttackRelease(notesArr, duration, t + 0.04, v * 0.6);
   }
 
   // ========== PATTERN SCHEDULING ==========

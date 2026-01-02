@@ -2,6 +2,21 @@
 
 export type TrackSection = 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro' | 'bridge';
 
+// Section types with energy levels (1-10)
+export type EnergyLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+// Chord progression types for melodic techno (2-4 chord progressions)
+export type ChordProgression =
+  | 'i-VI-III-VII'      // Classic emotional minor
+  | 'i-VII-VI-VII'      // Dark repetitive
+  | 'i-iv'              // Minimal hypnotic (2 chords)
+  | 'i-VI-iv-VII'       // Tale Of Us style
+  | 'i-III-VII-VI'      // Afterlife style
+  | 'i-v-VI-IV'         // Emotional progressive
+  | 'i-VII-i-VI'        // Hypnotic minimal
+  | 'i-VI'              // Super minimal (2 chords)
+  | 'i-iv-VII-III';     // Dark melodic
+
 // Expanded synth types for different timbres
 export type SynthType =
   | 'sine' | 'triangle' | 'sawtooth' | 'square' | 'pulse'
@@ -182,6 +197,8 @@ export interface TrackState {
   bpm: number;
   key: string;
   scale: Scale;
+  secondaryScale: Scale; // For 2-scale system (Tale Of Us/Anyma style)
+  chordProgression: ChordProgression;
   style: TechnoStyle;
   groove: GrooveType;
   sections: SectionConfig[];
@@ -373,70 +390,82 @@ export const DEFAULT_VOCAL: VocalParams = {
   mix: 50,
 };
 
+// Default sections following 16/32 bar phrase structure (Afterlife style)
+// Energy curve: Intro (low) -> Buildup (rising) -> Drop (peak) -> Breakdown (emotional) -> Drop (peak) -> Outro (fade)
 export const DEFAULT_SECTIONS: SectionConfig[] = [
-  { type: 'intro', bars: 8, hasKick: false, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: false, intensity: 30 },
-  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: true, intensity: 60 },
-  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: true, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: true, intensity: 100 },
-  { type: 'breakdown', bars: 8, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 40 },
-  { type: 'drop', bars: 16, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: true, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 100 },
-  { type: 'outro', bars: 8, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
+  // Intro - 16 bars, atmospheric, building tension
+  { type: 'intro', bars: 16, hasKick: false, hasBass: false, hasMelody: false, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 20 },
+  // Buildup - 16 bars, kick enters, tension builds
+  { type: 'buildup', bars: 16, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: true, intensity: 60 },
+  // Drop 1 - 32 bars, full energy, melodic elements
+  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: true, intensity: 100 },
+  // Breakdown - 16 bars, emotional moment, no kick
+  { type: 'breakdown', bars: 16, hasKick: false, hasBass: false, hasMelody: true, hasHihat: false, hasPad: true, hasPluck: false, hasStab: false, hasPiano: true, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
+  // Build back - 8 bars, tension before second drop
+  { type: 'buildup', bars: 8, hasKick: true, hasBass: true, hasMelody: false, hasHihat: true, hasPad: false, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: true, hasArp: true, hasVocal: false, intensity: 70 },
+  // Drop 2 - 32 bars, full energy, maybe add acid
+  { type: 'drop', bars: 32, hasKick: true, hasBass: true, hasMelody: true, hasHihat: true, hasPad: false, hasPluck: true, hasStab: true, hasPiano: false, hasStrings: false, hasAcid: false, hasPerc: true, hasFx: false, hasArp: true, hasVocal: false, intensity: 100 },
+  // Outro - 16 bars, gradual fade
+  { type: 'outro', bars: 16, hasKick: true, hasBass: false, hasMelody: false, hasHihat: true, hasPad: true, hasPluck: false, hasStab: false, hasPiano: false, hasStrings: true, hasAcid: false, hasPerc: false, hasFx: true, hasArp: false, hasVocal: true, intensity: 30 },
 ];
 
-// Style presets - different combinations for different techno styles
+// Style presets - Afterlife/Ka:st/Tale Of Us/Anyma/Adriatique style
+// Melodic techno typically runs 120-126 BPM
 export const STYLE_PRESETS: Record<TechnoStyle, Partial<TrackState>> = {
   melodic: {
-    bpm: 124,
+    bpm: 122,
     scale: 'minor',
     groove: 'straight',
   },
   minimal: {
-    bpm: 128,
+    bpm: 124,
     scale: 'pentatonicMinor',
     groove: 'shuffle',
   },
   progressive: {
-    bpm: 122,
+    bpm: 120,
     scale: 'dorian',
     groove: 'straight',
   },
   dark: {
-    bpm: 130,
+    bpm: 124,
     scale: 'phrygian',
     groove: 'syncopated',
   },
   industrial: {
-    bpm: 135,
+    bpm: 126,
     scale: 'locrian',
     groove: 'broken',
   },
   acid: {
-    bpm: 132,
+    bpm: 125,
     scale: 'blues',
     groove: 'shuffle',
   },
   detroit: {
-    bpm: 130,
+    bpm: 124,
     scale: 'minor',
     groove: 'syncopated',
   },
   berlin: {
-    bpm: 132,
+    bpm: 126,
     scale: 'phrygian',
     groove: 'straight',
   },
   trance: {
-    bpm: 138,
+    bpm: 126,
     scale: 'harmonicMinor',
     groove: 'straight',
   },
   hypnotic: {
-    bpm: 126,
+    bpm: 122,
     scale: 'dorian',
     groove: 'triplet',
   },
 };
 
 // Random element pools for total variety
+// BPM range adjusted for Afterlife/Ka:st/Tale Of Us style melodic techno (120-126)
 export const RANDOM_POOLS = {
   keys: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
   scales: ['minor', 'phrygian', 'harmonicMinor', 'dorian', 'pentatonicMinor', 'melodicMinor', 'mixolydian'] as Scale[],
@@ -444,5 +473,5 @@ export const RANDOM_POOLS = {
   grooves: ['straight', 'shuffle', 'syncopated', 'triplet', 'broken'] as GrooveType[],
   kickStyles: ['punchy', 'deep', 'hard', 'tight', 'boomy'] as KickStyle[],
   bassTypes: ['sub', 'reese', 'acid', 'pluck', 'growl', 'fm'] as BassType[],
-  bpmRanges: { min: 118, max: 140 },
+  bpmRanges: { min: 120, max: 126 },
 };

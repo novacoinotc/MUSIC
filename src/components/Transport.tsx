@@ -33,6 +33,8 @@ export function Transport() {
   const bpm = useTrackStore((s) => s.bpm);
   const key = useTrackStore((s) => s.key);
   const scale = useTrackStore((s) => s.scale);
+  const secondaryScale = useTrackStore((s) => s.secondaryScale);
+  const chordProgression = useTrackStore((s) => s.chordProgression);
   const style = useTrackStore((s) => s.style);
   const groove = useTrackStore((s) => s.groove);
   const masterVolume = useTrackStore((s) => s.masterVolume);
@@ -147,6 +149,8 @@ export function Transport() {
         section,
         key,
         scale,
+        secondaryScale,
+        chordProgression,
         style,
         groove,
         kick,
@@ -193,7 +197,7 @@ export function Transport() {
       setIsPlaying(false);
       setCurrentTime('0:0:0');
     }, `${totalBars}:0:0`);
-  }, [sections, key, scale, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, arp, vocal]);
+  }, [sections, key, scale, secondaryScale, chordProgression, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, arp, vocal]);
 
   // Reschedule patterns when parameters change while playing
   useEffect(() => {
@@ -203,7 +207,7 @@ export function Transport() {
       Tone.getTransport().position = 0;
       Tone.getTransport().start();
     }
-  }, [key, scale, style, groove, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
+  }, [key, scale, secondaryScale, chordProgression, style, groove, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
 
   const handlePlay = async () => {
     await initAudio();
