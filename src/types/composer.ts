@@ -199,22 +199,9 @@ export const PartialVocalParamsSchema = z.object({
   mix: z.number().optional(),
 }).partial();
 
-// Instrument targets schema
-export const InstrumentTargetsSchema = z.object({
-  kick: PartialKickParamsSchema.optional(),
-  bass: PartialBassParamsSchema.optional(),
-  melody: PartialMelodyParamsSchema.optional(),
-  hihat: PartialHiHatParamsSchema.optional(),
-  pad: PartialPadParamsSchema.optional(),
-  arp: PartialArpParamsSchema.optional(),
-  pluck: PartialPluckParamsSchema.optional(),
-  stab: PartialStabParamsSchema.optional(),
-  piano: PartialPianoParamsSchema.optional(),
-  strings: PartialStringsParamsSchema.optional(),
-  acid: PartialAcidParamsSchema.optional(),
-  perc: PartialPercParamsSchema.optional(),
-  vocal: PartialVocalParamsSchema.optional(),
-});
+// Instrument targets schema - permissive to accept varied GPT output
+// Values can be strings or numbers, we'll coerce them in applyComposerPlan
+export const InstrumentTargetsSchema = z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])));
 export type InstrumentTargets = z.infer<typeof InstrumentTargetsSchema>;
 
 // Main ComposerPlan schema
@@ -224,7 +211,7 @@ export const ComposerPlanSchema = z.object({
   key: z.string(),
   scale: z.string(),
   groove: z.string(),
-  energy_curve: z.array(z.number().min(1).max(10)),
+  energy_curve: z.array(z.number().min(0).max(10)),
   global_rules: GlobalRulesSchema,
   sections: z.array(ComposerSectionSchema),
   instrument_targets: InstrumentTargetsSchema,
