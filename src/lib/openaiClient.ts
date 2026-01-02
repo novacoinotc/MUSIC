@@ -34,7 +34,8 @@ export function getOpenAI(): OpenAI {
 
 /**
  * Get the model to use for composition
+ * Default: gpt-5-mini (fast, cost-effective, good for structured JSON output)
  */
 export function getComposerModel(): string {
-  return process.env.OPENAI_MODEL ?? 'gpt-4o';
+  return process.env.OPENAI_MODEL ?? 'gpt-5-mini';
 }
