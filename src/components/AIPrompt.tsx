@@ -4,7 +4,34 @@ import { useState, useCallback } from 'react';
 import { useTrackStore } from '@/stores/trackStore';
 import { Sparkles, Loader2, Wand2, Brain, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Scale, TechnoStyle, GrooveType } from '@/types';
-import type { ComposeResponse, StyleHint } from '@/types/composer';
+
+// Blueprint response type from /api/compose
+interface MusicBlueprint {
+  bpm: number;
+  key: string;
+  scale: string;
+  vibe: string[];
+  structure: Array<{
+    type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
+    bars: number;
+    intensity: number;
+  }>;
+  instruments: Record<string, Record<string, number>>;
+  patterns: Record<string, Array<{
+    time: string;
+    note: string;
+    duration: string;
+    velocity: number;
+  }>>;
+}
+
+interface ComposeResponse {
+  success: boolean;
+  blueprint?: MusicBlueprint;
+  error?: string;
+  detail?: string;
+  requestId?: string;
+}
 
 // AI Mood presets - these map descriptions to parameter configurations
 const MOOD_PRESETS: Record<string, {
@@ -117,18 +144,6 @@ function extractKey(prompt: string): string | null {
   return null;
 }
 
-// Detect style hint from prompt
-function detectStyleHint(prompt: string): StyleHint {
-  const lower = prompt.toLowerCase();
-  if (lower.includes('anyma') || lower.includes('ethereal')) {
-    return 'afterlife_anyma';
-  }
-  if (lower.includes('underground') || lower.includes('warehouse')) {
-    return 'melodic_underground';
-  }
-  return 'afterlife_kast';
-}
-
 interface AIPromptProps {
   onGenerate?: () => void;
 }
@@ -153,7 +168,7 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
   const setStyle = useTrackStore((s) => s.setStyle);
   const setGroove = useTrackStore((s) => s.setGroove);
   const randomizeAll = useTrackStore((s) => s.randomizeAll);
-  const applyComposerPlan = useTrackStore((s) => s.applyComposerPlan);
+  const applyBlueprint = useTrackStore((s) => s.applyBlueprint);
 
   const showNotification = useCallback((type: NotificationType, message: string) => {
     setNotification({ type, message });
@@ -194,7 +209,7 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
     onGenerate?.();
   };
 
-  // GPT-5.2 AI Composer (detailed plan)
+  // GPT-5.2 AI Composer (detailed blueprint)
   const handleCompose = async () => {
     if (!prompt.trim()) return;
 
@@ -207,24 +222,26 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          durationBars: 128,
-          bpmHint: extractBPM(prompt) || undefined,
-          styleHint: detectStyleHint(prompt),
+          seed: Math.floor(Math.random() * 10000),
         }),
       });
 
       const data: ComposeResponse = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to compose');
+        throw new Error(data.error || data.detail || 'Failed to compose');
       }
 
-      if (data.plan) {
-        // Apply the AI-generated plan to the store
-        applyComposerPlan(data.plan);
+      if (data.blueprint) {
+        // Apply the AI-generated blueprint to the store
+        applyBlueprint(data.blueprint);
 
-        setLastMood(`AI: ${data.plan.style}`);
-        showNotification('success', `AI composed ${data.plan.sections.length} sections at ${data.plan.bpm} BPM`);
+        const vibeStr = data.blueprint.vibe?.slice(0, 2).join(', ') || 'AI';
+        setLastMood(`AI: ${vibeStr}`);
+        showNotification(
+          'success',
+          `Blueprint: ${data.blueprint.bpm} BPM, ${data.blueprint.key} ${data.blueprint.scale}, ${data.blueprint.structure.length} secciones`
+        );
 
         // Trigger regeneration
         onGenerate?.();
@@ -262,7 +279,7 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
 
       <p className="text-sm text-zinc-400 mb-3">
         Describe el ambiente o estilo. Usa <span className="text-cyan-400">Quick</span> para generar rápido o{' '}
-        <span className="text-purple-400">AI Compose</span> para un plan detallado con GPT.
+        <span className="text-purple-400">AI Compose</span> para un blueprint detallado con GPT-5.2.
       </p>
 
       {/* Notification toast */}
@@ -316,7 +333,7 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
           onClick={handleCompose}
           disabled={isGenerating || isComposing || !prompt.trim()}
           className="px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-medium hover:from-purple-700 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          title="AI Compose with GPT (detailed plan)"
+          title="AI Compose with GPT-5.2 (detailed blueprint)"
         >
           {isComposing ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -345,8 +362,8 @@ export function AIPrompt({ onGenerate }: AIPromptProps) {
       <div className="mt-3 pt-3 border-t border-zinc-700/50">
         <p className="text-xs text-zinc-500">
           <Brain className="w-3 h-3 inline mr-1" />
-          AI Compose usa GPT para generar un plan musical completo con estructura,
-          energía, y parámetros optimizados para el estilo Ka:st/Afterlife.
+          AI Compose usa GPT-5.2 para generar un Music Blueprint completo con estructura,
+          parámetros de instrumentos, y patterns para Tone.js.
         </p>
       </div>
     </div>

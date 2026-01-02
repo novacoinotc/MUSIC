@@ -87,6 +87,9 @@ interface TrackStore extends TrackState {
   // AI Composer integration
   applyComposerPlan: (plan: import('@/types/composer').ComposerPlan) => void;
 
+  // AI Blueprint integration (new GPT-5.2 format)
+  applyBlueprint: (blueprint: MusicBlueprint) => void;
+
   // Random generation - MASSIVE variety
   randomizeAll: () => void;
   randomizeKick: () => void;
@@ -96,6 +99,26 @@ interface TrackStore extends TrackState {
 
   // Reset
   reset: () => void;
+}
+
+// Music Blueprint types from GPT-5.2 Responses API
+interface MusicBlueprint {
+  bpm: number;
+  key: string;
+  scale: string;
+  vibe: string[];
+  structure: Array<{
+    type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
+    bars: number;
+    intensity: number;
+  }>;
+  instruments: Record<string, Record<string, number>>;
+  patterns: Record<string, Array<{
+    time: string;
+    note: string;
+    duration: string;
+    velocity: number;
+  }>>;
 }
 
 const DEFAULT_STATE: TrackState = {
@@ -878,6 +901,191 @@ export const useTrackStore = create<TrackStore>((set, get) => ({
     if (targets.vocal && Object.keys(targets.vocal).length > 0) {
       set((state) => ({ vocal: { ...state.vocal, ...(targets.vocal as Partial<VocalParams>) } }));
     }
+  },
+
+  // Apply AI Blueprint from GPT-5.2 Responses API
+  applyBlueprint: (blueprint) => {
+    // Map scale string to Scale type
+    const mapScale = (s: string): Scale => {
+      const validScales: Scale[] = [
+        'minor', 'major', 'phrygian', 'harmonicMinor', 'melodicMinor',
+        'dorian', 'locrian', 'lydian', 'mixolydian', 'pentatonicMinor',
+        'pentatonicMajor', 'blues', 'wholeNote', 'chromatic', 'arabic', 'japanese',
+      ];
+      return validScales.includes(s as Scale) ? (s as Scale) : 'minor';
+    };
+
+    // Map vibe tags to TechnoStyle
+    const mapVibeToStyle = (vibes: string[]): TechnoStyle => {
+      const vibeStr = vibes.join(' ').toLowerCase();
+      if (vibeStr.includes('dark') || vibeStr.includes('deep')) return 'dark';
+      if (vibeStr.includes('hypnotic') || vibeStr.includes('repetitive')) return 'hypnotic';
+      if (vibeStr.includes('melodic') || vibeStr.includes('emotional')) return 'melodic';
+      if (vibeStr.includes('progressive') || vibeStr.includes('journey')) return 'progressive';
+      if (vibeStr.includes('minimal')) return 'minimal';
+      if (vibeStr.includes('industrial') || vibeStr.includes('hard')) return 'industrial';
+      if (vibeStr.includes('acid')) return 'acid';
+      return 'melodic';
+    };
+
+    // Map vibe to groove
+    const mapVibeToGroove = (vibes: string[]): GrooveType => {
+      const vibeStr = vibes.join(' ').toLowerCase();
+      if (vibeStr.includes('shuffle') || vibeStr.includes('swing')) return 'shuffle';
+      if (vibeStr.includes('syncopated') || vibeStr.includes('groovy')) return 'syncopated';
+      if (vibeStr.includes('broken')) return 'broken';
+      return 'straight';
+    };
+
+    // Helper to determine which instruments should be active based on intensity
+    const getActiveInstruments = (intensity: number, sectionType: string) => {
+      const baseInstruments = {
+        hasKick: intensity >= 4 && sectionType !== 'breakdown',
+        hasBass: intensity >= 4 && sectionType !== 'breakdown',
+        hasMelody: intensity >= 6 || sectionType === 'breakdown',
+        hasHihat: intensity >= 5 && sectionType !== 'intro' && sectionType !== 'breakdown',
+        hasPad: intensity <= 6 || sectionType === 'intro' || sectionType === 'breakdown',
+        hasPluck: intensity >= 7 && sectionType === 'drop',
+        hasStab: false,
+        hasPiano: sectionType === 'breakdown',
+        hasStrings: sectionType === 'intro' || sectionType === 'breakdown' || sectionType === 'outro',
+        hasAcid: false,
+        hasPerc: intensity >= 6,
+        hasFx: sectionType === 'buildup' || intensity <= 3,
+        hasArp: intensity >= 6 && intensity <= 8,
+        hasVocal: sectionType === 'breakdown',
+      };
+      return baseInstruments;
+    };
+
+    // Convert structure to sections
+    const sections: SectionConfig[] = blueprint.structure.map((section) => ({
+      type: section.type,
+      bars: section.bars,
+      intensity: section.intensity * 10, // Convert 0-10 to 0-100
+      ...getActiveInstruments(section.intensity, section.type),
+    }));
+
+    // Apply global settings
+    set({
+      bpm: blueprint.bpm,
+      key: blueprint.key,
+      scale: mapScale(blueprint.scale),
+      secondaryScale: blueprint.scale === 'minor' ? 'phrygian' : 'minor',
+      style: mapVibeToStyle(blueprint.vibe),
+      groove: mapVibeToGroove(blueprint.vibe),
+      sections,
+    });
+
+    // Apply instrument parameters from blueprint
+    const instruments = blueprint.instruments;
+
+    if (instruments.kick) {
+      set((state) => ({
+        kick: {
+          ...state.kick,
+          punch: instruments.kick.punch ?? state.kick.punch,
+          tone: instruments.kick.tone ?? state.kick.tone,
+          decay: instruments.kick.decay ?? state.kick.decay,
+          sub: instruments.kick.sub ?? state.kick.sub,
+        },
+      }));
+    }
+
+    if (instruments.bass) {
+      set((state) => ({
+        bass: {
+          ...state.bass,
+          cutoff: instruments.bass.cutoff ?? state.bass.cutoff,
+          resonance: instruments.bass.resonance ?? state.bass.resonance,
+          drive: instruments.bass.drive ?? (instruments.bass.distortion ?? state.bass.distortion),
+        },
+      }));
+    }
+
+    if (instruments.hats) {
+      set((state) => ({
+        hihat: {
+          ...state.hihat,
+          decay: instruments.hats.decay ?? state.hihat.decay,
+          pitch: instruments.hats.pitch ?? state.hihat.pitch,
+        },
+      }));
+    }
+
+    if (instruments.pad) {
+      set((state) => ({
+        pad: {
+          ...state.pad,
+          attack: instruments.pad.attack ?? state.pad.attack,
+          release: instruments.pad.release ?? state.pad.release,
+          filterCutoff: instruments.pad.cutoff ?? state.pad.filterCutoff,
+          reverbMix: instruments.pad.reverbMix ?? state.pad.reverbMix,
+        },
+      }));
+    }
+
+    if (instruments.arp) {
+      set((state) => ({
+        arp: {
+          ...state.arp,
+          speed: instruments.arp.rate ?? state.arp.speed,
+          swing: instruments.arp.swing ?? state.arp.swing,
+        },
+      }));
+    }
+
+    if (instruments.lead) {
+      set((state) => ({
+        melody: {
+          ...state.melody,
+          filterCutoff: instruments.lead.cutoff ?? state.melody.filterCutoff,
+          attack: instruments.lead.attack ?? state.melody.attack,
+          release: instruments.lead.release ?? state.melody.release,
+          delayMix: instruments.lead.delayMix ?? state.melody.delayMix,
+        },
+      }));
+    }
+
+    if (instruments.pluck) {
+      set((state) => ({
+        pluck: {
+          ...state.pluck,
+          decay: instruments.pluck.decay ?? state.pluck.decay,
+          brightness: instruments.pluck.brightness ?? state.pluck.brightness,
+          reverbMix: instruments.pluck.reverbMix ?? state.pluck.reverbMix,
+        },
+      }));
+    }
+
+    if (instruments.vocalPad) {
+      set((state) => ({
+        vocal: {
+          ...state.vocal,
+          brightness: instruments.vocalPad.brightness ?? state.vocal.brightness,
+          reverbMix: instruments.vocalPad.reverbMix ?? state.vocal.reverbMix,
+          attack: instruments.vocalPad.attack ?? state.vocal.attack,
+        },
+      }));
+    }
+
+    if (instruments.clap) {
+      set((state) => ({
+        perc: {
+          ...state.perc,
+          decay: instruments.clap.decay ?? state.perc.decay,
+          reverb: instruments.clap.reverbMix ?? state.perc.reverb,
+        },
+      }));
+    }
+
+    console.log('[TrackStore] Applied blueprint:', {
+      bpm: blueprint.bpm,
+      key: blueprint.key,
+      scale: blueprint.scale,
+      sections: sections.length,
+      instruments: Object.keys(instruments),
+    });
   },
 
   reset: () => set(DEFAULT_STATE),
