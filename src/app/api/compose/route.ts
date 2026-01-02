@@ -83,70 +83,124 @@ interface ComposeResponse {
   requestId?: string;
 }
 
+// Helper to create strict object schemas with all properties required
+function strictObj(properties: Record<string, unknown>) {
+  return {
+    type: 'object',
+    properties,
+    required: Object.keys(properties),
+    additionalProperties: false,
+  };
+}
+
 // JSON Schema for strict output (GPT-5.2 Responses API)
 const BLUEPRINT_SCHEMA = {
   name: 'MusicBlueprint',
   strict: true,
-  schema: {
-    type: 'object',
-    properties: {
-      bpm: { type: 'number' },
-      key: { type: 'string' },
-      scale: { type: 'string' },
-      vibe: { type: 'array', items: { type: 'string' } },
-      structure: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            type: { type: 'string', enum: ['intro', 'buildup', 'drop', 'breakdown', 'outro'] },
-            bars: { type: 'number' },
-            intensity: { type: 'number' },
-          },
-          required: ['type', 'bars', 'intensity'],
-          additionalProperties: false,
-        },
-      },
-      instruments: {
-        type: 'object',
-        additionalProperties: {
-          type: 'object',
-          properties: {
-            cutoff: { type: 'number' },
-            resonance: { type: 'number' },
-            attack: { type: 'number' },
-            decay: { type: 'number' },
-            sustain: { type: 'number' },
-            release: { type: 'number' },
-            drive: { type: 'number' },
-            reverbMix: { type: 'number' },
-            delayMix: { type: 'number' },
-            pitch: { type: 'number' },
-          },
-          additionalProperties: false,
-        },
-      },
-      patterns: {
-        type: 'object',
-        additionalProperties: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              time: { type: 'string' },
-              note: { type: 'string' },
-              duration: { type: 'string' },
-              velocity: { type: 'number' },
-            },
-            required: ['time', 'note', 'duration', 'velocity'],
-            additionalProperties: false,
-          },
-        },
-      },
+  schema: strictObj({
+    bpm: { type: 'number' },
+    key: { type: 'string' },
+    scale: { type: 'string' },
+    vibe: { type: 'array', items: { type: 'string' } },
+    structure: {
+      type: 'array',
+      items: strictObj({
+        type: { type: 'string', enum: ['intro', 'buildup', 'drop', 'breakdown', 'outro'] },
+        bars: { type: 'number' },
+        intensity: { type: 'number' },
+      }),
     },
-    required: ['bpm', 'key', 'scale', 'vibe', 'structure', 'instruments', 'patterns'],
-    additionalProperties: false,
-  },
+    instruments: strictObj({
+      kick: strictObj({
+        punch: { type: 'number' },
+        tone: { type: 'number' },
+        decay: { type: 'number' },
+      }),
+      bass: strictObj({
+        cutoff: { type: 'number' },
+        resonance: { type: 'number' },
+        drive: { type: 'number' },
+      }),
+      hats: strictObj({
+        decay: { type: 'number' },
+        pitch: { type: 'number' },
+        swing: { type: 'number' },
+      }),
+      clap: strictObj({
+        decay: { type: 'number' },
+        reverbMix: { type: 'number' },
+      }),
+      perc: strictObj({
+        pitch: { type: 'number' },
+        decay: { type: 'number' },
+      }),
+      pad: strictObj({
+        cutoff: { type: 'number' },
+        attack: { type: 'number' },
+        release: { type: 'number' },
+        reverbMix: { type: 'number' },
+      }),
+      arp: strictObj({
+        cutoff: { type: 'number' },
+        rate: { type: 'number' },
+        swing: { type: 'number' },
+      }),
+      lead: strictObj({
+        cutoff: { type: 'number' },
+        attack: { type: 'number' },
+        release: { type: 'number' },
+        delayMix: { type: 'number' },
+      }),
+      pluck: strictObj({
+        decay: { type: 'number' },
+        brightness: { type: 'number' },
+        reverbMix: { type: 'number' },
+      }),
+      vocalPad: strictObj({
+        brightness: { type: 'number' },
+        reverbMix: { type: 'number' },
+        attack: { type: 'number' },
+      }),
+    }),
+    patterns: strictObj({
+      kick: {
+        type: 'array',
+        items: strictObj({
+          time: { type: 'string' },
+          note: { type: 'string' },
+          duration: { type: 'string' },
+          velocity: { type: 'number' },
+        }),
+      },
+      bass: {
+        type: 'array',
+        items: strictObj({
+          time: { type: 'string' },
+          note: { type: 'string' },
+          duration: { type: 'string' },
+          velocity: { type: 'number' },
+        }),
+      },
+      hats: {
+        type: 'array',
+        items: strictObj({
+          time: { type: 'string' },
+          note: { type: 'string' },
+          duration: { type: 'string' },
+          velocity: { type: 'number' },
+        }),
+      },
+      lead: {
+        type: 'array',
+        items: strictObj({
+          time: { type: 'string' },
+          note: { type: 'string' },
+          duration: { type: 'string' },
+          velocity: { type: 'number' },
+        }),
+      },
+    }),
+  }),
 };
 
 // System instructions for Afterlife/Ka:st style
