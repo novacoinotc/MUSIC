@@ -61,8 +61,9 @@ class AudioEngine {
   private stabReverb: Tone.Reverb | null = null;
   private stabGain: Tone.Gain | null = null;
 
-  // ========== PIANO ==========
+  // ========== PIANO (AFTERLIFE DARK CORE - SOLO TEXTURA, NUNCA PROTAGONISTA) ==========
   private pianoSynth: Tone.PolySynth | null = null;
+  private pianoFilter: Tone.Filter | null = null;  // OBLIGATORIO - siempre filtrado
   private pianoReverb: Tone.Reverb | null = null;
   private pianoGain: Tone.Gain | null = null;
 
@@ -162,10 +163,12 @@ class AudioEngine {
         envelope: { attack: 0.001, decay: 0.012, sustain: 0, release: 0.008 },
       }).connect(kickClickFilter);
 
-      // ===== BASS (KA:ST - PROTAGONISTA, profundo, cálido) =====
-      this.bassGain = new Tone.Gain(0.75).connect(this.masterGain); // MÁS ALTO - protagonista
-      this.bassDistortion = new Tone.Distortion(0).connect(this.bassGain);
-      this.bassFilter = new Tone.Filter({ frequency: 350, type: 'lowpass', rolloff: -24, Q: 1 }).connect(this.bassDistortion); // Filtro más bajo
+      // ===== BASS (AFTERLIFE DARK CORE - PROTAGONISTA ABSOLUTO) =====
+      // El bajo DOMINA la mezcla. Todo lo demás es secundario.
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Bass as absolute protagonist');
+      this.bassGain = new Tone.Gain(0.95).connect(this.masterGain); // MÁXIMO - protagonista absoluto
+      this.bassDistortion = new Tone.Distortion(0.05).connect(this.bassGain); // Leve saturación para presencia
+      this.bassFilter = new Tone.Filter({ frequency: 280, type: 'lowpass', rolloff: -24, Q: 0.8 }).connect(this.bassDistortion); // MUY bajo
 
       this.bassSynth = new Tone.MonoSynth({
         oscillator: { type: 'triangle' }, // Triangle = más cálido que saw
@@ -191,63 +194,75 @@ class AudioEngine {
         filterEnvelope: { attack: 0.002, decay: 0.2, sustain: 0.1, release: 0.1, baseFrequency: 200, octaves: 4 },
       }).connect(this.acidFilter);
 
-      // ===== LEAD MELODY (KA:ST - sutil, oscura, etérea) =====
-      this.melodyReverb = new Tone.Reverb({ decay: 4.5, wet: 0.5 }).connect(this.masterGain); // Más reverb
-      this.melodyDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.3, wet: 0.35 }).connect(this.melodyReverb);
-      this.melodyChorus = new Tone.Chorus({ frequency: 1, depth: 0.3, wet: 0.25 }).connect(this.melodyDelay);
-      this.melodyFilter = new Tone.Filter({ frequency: 2000, type: 'lowpass', rolloff: -12 }).connect(this.melodyChorus); // Filtro más bajo
-      this.melodyGain = new Tone.Gain(0.28).connect(this.melodyFilter); // Menos volumen
+      // ===== LEAD MELODY (AFTERLIFE DARK CORE - MUY filtrado, secundario) =====
+      // NUNCA brillante. Siempre filtrado. El bajo manda.
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Lead mapped to filtered_analog_lead');
+      this.melodyReverb = new Tone.Reverb({ decay: 5.5, wet: 0.6 }).connect(this.masterGain);
+      this.melodyDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.35, wet: 0.4 }).connect(this.melodyReverb);
+      this.melodyChorus = new Tone.Chorus({ frequency: 0.5, depth: 0.4, wet: 0.3 }).connect(this.melodyDelay);
+      this.melodyFilter = new Tone.Filter({ frequency: 1200, type: 'lowpass', rolloff: -24 }).connect(this.melodyChorus); // MUY BAJO - anti-bright
+      this.melodyGain = new Tone.Gain(0.15).connect(this.melodyFilter); // BAJO - secundario al bajo
 
       this.melodySynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' }, // Sine = más suave que triangle
-        envelope: { attack: 0.1, decay: 0.5, sustain: 0.25, release: 1.5 }, // Ataque más suave
+        oscillator: { type: 'sine' }, // Solo sine - lo más oscuro
+        envelope: { attack: 0.2, decay: 0.6, sustain: 0.2, release: 2 }, // Ataque más lento
       }).connect(this.melodyGain);
 
-      // ===== ARPEGGIATOR (KA:ST - hipnótico, oscuro) =====
-      this.arpReverb = new Tone.Reverb({ decay: 5, wet: 0.5 }).connect(this.masterGain); // Más reverb
-      this.arpDelay = new Tone.PingPongDelay({ delayTime: '8n', feedback: 0.4, wet: 0.4 }).connect(this.arpReverb); // Más delay
-      this.arpFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass', rolloff: -12 }).connect(this.arpDelay); // Filtro más bajo
-      this.arpGain = new Tone.Gain(0.18).connect(this.arpFilter); // Menos volumen
+      // ===== ARPEGGIATOR (AFTERLIFE DARK CORE - gated_texture, mid-range only) =====
+      // Arp = textura rítmica oscura, NO melodía brillante
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Arp as gated_texture (no highs)');
+      this.arpReverb = new Tone.Reverb({ decay: 6, wet: 0.55 }).connect(this.masterGain);
+      this.arpDelay = new Tone.PingPongDelay({ delayTime: '8n', feedback: 0.45, wet: 0.45 }).connect(this.arpReverb);
+      this.arpFilter = new Tone.Filter({ frequency: 1000, type: 'lowpass', rolloff: -24 }).connect(this.arpDelay); // MUY filtrado
+      this.arpGain = new Tone.Gain(0.10).connect(this.arpFilter); // MUY bajo - solo textura
 
       this.arpSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.02, decay: 0.2, sustain: 0.1, release: 0.4 }, // Más suave
+        envelope: { attack: 0.05, decay: 0.15, sustain: 0.05, release: 0.3 }, // Gated
       }).connect(this.arpGain);
 
-      // ===== PLUCK SYNTH (KA:ST - oscuro, espacioso) =====
-      this.pluckReverb = new Tone.Reverb({ decay: 4, wet: 0.55 }).connect(this.masterGain); // Más reverb
-      this.pluckDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.35, wet: 0.45 }).connect(this.pluckReverb);
-      this.pluckFilter = new Tone.Filter({ frequency: 2200, type: 'lowpass' }).connect(this.pluckDelay); // Más oscuro
-      this.pluckGain = new Tone.Gain(0.22).connect(this.pluckFilter); // Menos volumen
+      // ===== PLUCK SYNTH (AFTERLIFE DARK CORE - muted_string, muy filtrado) =====
+      // Pluck = solo si está muy filtrado y como textura secundaria
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Pluck as muted_string');
+      this.pluckReverb = new Tone.Reverb({ decay: 5, wet: 0.6 }).connect(this.masterGain);
+      this.pluckDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.4, wet: 0.5 }).connect(this.pluckReverb);
+      this.pluckFilter = new Tone.Filter({ frequency: 900, type: 'lowpass', rolloff: -24 }).connect(this.pluckDelay); // MUY oscuro
+      this.pluckGain = new Tone.Gain(0.08).connect(this.pluckFilter); // MUY bajo - solo textura
 
       this.pluckSynth = new Tone.PluckSynth({
-        attackNoise: 1.5, // Menos ataque
-        dampening: 2000, // Más oscuro
-        resonance: 0.9,
+        attackNoise: 0.8, // Poco ataque
+        dampening: 800, // MUY oscuro
+        resonance: 0.85,
       }).connect(this.pluckGain);
 
       this.pluckSynth2 = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' }, // Más suave
-        envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.5 },
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.03, decay: 0.3, sustain: 0, release: 0.4 },
       }).connect(this.pluckGain);
 
-      // ===== STAB SYNTH (KA:ST - oscuro, menos frecuente) =====
-      this.stabReverb = new Tone.Reverb({ decay: 3, wet: 0.45 }).connect(this.masterGain);
-      this.stabFilter = new Tone.Filter({ frequency: 2500, type: 'lowpass', rolloff: -12 }).connect(this.stabReverb); // Más oscuro
-      this.stabGain = new Tone.Gain(0.22).connect(this.stabFilter); // Menos volumen
+      // ===== STAB SYNTH (AFTERLIFE DARK CORE - oscuro, raro, solo para acentos) =====
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Stab as dark_accent');
+      this.stabReverb = new Tone.Reverb({ decay: 4, wet: 0.55 }).connect(this.masterGain);
+      this.stabFilter = new Tone.Filter({ frequency: 1500, type: 'lowpass', rolloff: -24 }).connect(this.stabReverb); // MÁS oscuro
+      this.stabGain = new Tone.Gain(0.12).connect(this.stabFilter); // BAJO - solo acentos
 
       this.stabSynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' }, // Más suave que saw
-        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.25 },
+        oscillator: { type: 'sine' }, // Sine = más oscuro que triangle
+        envelope: { attack: 0.02, decay: 0.25, sustain: 0.05, release: 0.4 },
       }).connect(this.stabGain);
 
-      // ===== PIANO (subtle, breakdown texture only) =====
-      this.pianoReverb = new Tone.Reverb({ decay: 4, wet: 0.55 }).connect(this.masterGain);
-      this.pianoGain = new Tone.Gain(0.18).connect(this.pianoReverb); // Lower gain
+      // ===== PIANO (AFTERLIFE DARK CORE - PROHIBIDO COMO PROTAGONISTA) =====
+      // Piano SOLO puede usarse: muy filtrado, muy bajo en mezcla, como textura secundaria
+      // NUNCA como lead, motif, ni protagonista. Si suena a "piano bonito" = FALLO
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Piano as distant_texture ONLY');
+      console.warn('[AudioEngine] WARNING: Piano is restricted - use only as background texture');
+      this.pianoReverb = new Tone.Reverb({ decay: 6, wet: 0.75 }).connect(this.masterGain); // Más reverb = más distante
+      this.pianoFilter = new Tone.Filter({ frequency: 800, type: 'lowpass', rolloff: -24 }).connect(this.pianoReverb); // MUY filtrado
+      this.pianoGain = new Tone.Gain(0.06).connect(this.pianoFilter); // MUY BAJO - apenas audible
 
       this.pianoSynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.15, decay: 2, sustain: 0.2, release: 3 }, // Softer attack, longer release
+        oscillator: { type: 'sine' }, // Sine = lo más oscuro posible
+        envelope: { attack: 0.4, decay: 3, sustain: 0.1, release: 5 }, // Muy lento, etéreo
       }).connect(this.pianoGain);
 
       // ===== STRINGS (KA:ST - oscuras, cinematográficas) =====
@@ -532,19 +547,28 @@ class AudioEngine {
   updatePiano(params: PianoParams) {
     if (!this.pianoSynth) return;
 
-    // Brightness affects decay
+    // AFTERLIFE DARK CORE: Piano siempre filtrado y bajo
+    // Brightness limitado para mantener oscuro
+    const limitedBrightness = Math.min(params.brightness, 40); // Max 40% brightness
+
     this.pianoSynth.set({
       envelope: {
-        decay: 0.8 + (params.brightness / 100) * 0.6,
+        decay: 2 + (limitedBrightness / 100) * 1.5, // Decay largo
       },
     });
 
+    // Filter siempre bajo - máximo 1200Hz incluso con brightness alto
+    if (this.pianoFilter) {
+      this.pianoFilter.frequency.value = 500 + (limitedBrightness / 100) * 700; // 500-1200Hz max
+    }
+
     if (this.pianoReverb) {
-      this.pianoReverb.wet.value = params.reverb / 100;
+      this.pianoReverb.wet.value = Math.max(0.6, params.reverb / 100); // Mínimo 60% wet
     }
 
     if (this.pianoGain) {
-      this.pianoGain.gain.value = 0.2 + (params.velocity / 100) * 0.2;
+      // Gain MUY limitado - nunca puede dominar
+      this.pianoGain.gain.value = 0.03 + (params.velocity / 100) * 0.05; // Max 0.08
     }
   }
 
@@ -889,7 +913,7 @@ class AudioEngine {
         this.arpSynth, this.arpFilter, this.arpDelay, this.arpReverb, this.arpGain,
         this.pluckSynth, this.pluckSynth2, this.pluckFilter, this.pluckDelay, this.pluckReverb, this.pluckGain,
         this.stabSynth, this.stabFilter, this.stabReverb, this.stabGain,
-        this.pianoSynth, this.pianoReverb, this.pianoGain,
+        this.pianoSynth, this.pianoFilter, this.pianoReverb, this.pianoGain,
         this.stringsSynth, this.stringsSynth2, this.stringsChorus, this.stringsReverb, this.stringsFilter, this.stringsGain,
         this.padSynth, this.padSynth2, this.padFilter, this.padChorus, this.padReverb, this.padGain,
         this.hihatClosed, this.hihatOpen, this.hihatFilter, this.hihatGain,

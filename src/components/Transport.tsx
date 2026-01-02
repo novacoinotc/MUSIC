@@ -244,6 +244,11 @@ export function Transport() {
     await initAudio();
     const newSeed = Date.now();
     setSeed(newSeed);
+
+    // Reset transport position to start from beginning
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
+
     console.log('[Transport] handlePlay: Scheduling patterns with seed', newSeed);
     scheduleAllPatterns(newSeed);
     console.log('[Transport] handlePlay: Calling audioEngine.play()');
