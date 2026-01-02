@@ -11,11 +11,16 @@ import {
   Shuffle,
   RotateCcw,
   Volume2,
+  Zap,
 } from 'lucide-react';
 import { Slider } from './Slider';
 import * as Tone from 'tone';
+import type { Scale, TechnoStyle, GrooveType } from '@/types';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const SCALES: Scale[] = ['minor', 'phrygian', 'harmonicMinor', 'dorian', 'pentatonicMinor', 'melodicMinor', 'mixolydian'];
+const STYLES: TechnoStyle[] = ['melodic', 'minimal', 'progressive', 'dark', 'acid', 'hypnotic'];
+const GROOVES: GrooveType[] = ['straight', 'shuffle', 'syncopated', 'triplet', 'broken'];
 
 export function Transport() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -24,22 +29,35 @@ export function Transport() {
   const [currentTime, setCurrentTime] = useState('0:0:0');
   const [seed, setSeed] = useState(Date.now());
 
-  // Track if we need to reschedule patterns
-  const needsReschedule = useRef(false);
-
+  // Get all store values
   const bpm = useTrackStore((s) => s.bpm);
   const key = useTrackStore((s) => s.key);
   const scale = useTrackStore((s) => s.scale);
+  const style = useTrackStore((s) => s.style);
+  const groove = useTrackStore((s) => s.groove);
   const masterVolume = useTrackStore((s) => s.masterVolume);
   const sections = useTrackStore((s) => s.sections);
+
+  // All instruments
   const kick = useTrackStore((s) => s.kick);
   const bass = useTrackStore((s) => s.bass);
   const melody = useTrackStore((s) => s.melody);
   const hihat = useTrackStore((s) => s.hihat);
   const pad = useTrackStore((s) => s.pad);
+  const pluck = useTrackStore((s) => s.pluck);
+  const stab = useTrackStore((s) => s.stab);
+  const piano = useTrackStore((s) => s.piano);
+  const strings = useTrackStore((s) => s.strings);
+  const acid = useTrackStore((s) => s.acid);
+  const perc = useTrackStore((s) => s.perc);
+  const arp = useTrackStore((s) => s.arp);
 
+  // Actions
   const setBPM = useTrackStore((s) => s.setBPM);
   const setKey = useTrackStore((s) => s.setKey);
+  const setScale = useTrackStore((s) => s.setScale);
+  const setStyle = useTrackStore((s) => s.setStyle);
+  const setGroove = useTrackStore((s) => s.setGroove);
   const setMasterVolume = useTrackStore((s) => s.setMasterVolume);
   const randomizeAll = useTrackStore((s) => s.randomizeAll);
   const reset = useTrackStore((s) => s.reset);
@@ -49,58 +67,54 @@ export function Transport() {
     await audioEngine.init();
     audioEngine.setBPM(bpm);
     audioEngine.setMasterVolume(masterVolume);
+    audioEngine.setStyle(style);
+    audioEngine.setGroove(groove, 0);
+
+    // Initialize all instruments
     audioEngine.updateKick(kick);
     audioEngine.updateBass(bass);
     audioEngine.updateMelody(melody);
     audioEngine.updateHihat(hihat);
     audioEngine.updatePad(pad);
-    setIsInitialized(true);
-  }, [isInitialized, bpm, masterVolume, kick, bass, melody, hihat, pad]);
+    audioEngine.updatePluck(pluck);
+    audioEngine.updateStab(stab);
+    audioEngine.updatePiano(piano);
+    audioEngine.updateStrings(strings);
+    audioEngine.updateAcid(acid);
+    audioEngine.updatePerc(perc);
 
-  // Sync BPM
+    setIsInitialized(true);
+  }, [isInitialized, bpm, masterVolume, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc]);
+
+  // Sync settings
   useEffect(() => {
-    if (isInitialized) {
-      audioEngine.setBPM(bpm);
-    }
+    if (isInitialized) audioEngine.setBPM(bpm);
   }, [bpm, isInitialized]);
 
-  // Sync master volume
   useEffect(() => {
-    if (isInitialized) {
-      audioEngine.setMasterVolume(masterVolume);
-    }
+    if (isInitialized) audioEngine.setMasterVolume(masterVolume);
   }, [masterVolume, isInitialized]);
 
+  useEffect(() => {
+    if (isInitialized) audioEngine.setStyle(style);
+  }, [style, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) audioEngine.setGroove(groove, 0);
+  }, [groove, isInitialized]);
+
   // Sync all instrument parameters
-  useEffect(() => {
-    if (isInitialized) {
-      audioEngine.updateKick(kick);
-    }
-  }, [kick, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized) {
-      audioEngine.updateBass(bass);
-    }
-  }, [bass, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized) {
-      audioEngine.updateMelody(melody);
-    }
-  }, [melody, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized) {
-      audioEngine.updateHihat(hihat);
-    }
-  }, [hihat, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized) {
-      audioEngine.updatePad(pad);
-    }
-  }, [pad, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateKick(kick); }, [kick, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateBass(bass); }, [bass, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateMelody(melody); }, [melody, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateHihat(hihat); }, [hihat, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updatePad(pad); }, [pad, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updatePluck(pluck); }, [pluck, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateStab(stab); }, [stab, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updatePiano(piano); }, [piano, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateStrings(strings); }, [strings, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updateAcid(acid); }, [acid, isInitialized]);
+  useEffect(() => { if (isInitialized) audioEngine.updatePerc(perc); }, [perc, isInitialized]);
 
   // Time display update
   useEffect(() => {
@@ -113,7 +127,7 @@ export function Transport() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // Stop handler - defined first to avoid reference issues
+  // Stop handler
   const handleStop = useCallback(() => {
     audioEngine.stop();
     setIsPlaying(false);
@@ -122,7 +136,6 @@ export function Transport() {
 
   // Schedule all patterns to the transport
   const scheduleAllPatterns = useCallback((currentSeed: number) => {
-    // Cancel all scheduled events
     Tone.getTransport().cancel();
 
     let startBar = 0;
@@ -131,22 +144,39 @@ export function Transport() {
         section,
         key,
         scale,
+        style,
+        groove,
         kick,
         bass,
         melody,
         hihat,
         pad,
+        pluck,
+        stab,
+        piano,
+        strings,
+        acid,
+        perc,
+        arp,
         currentSeed + index
       );
 
       const startTime = Tone.Time(`${startBar}:0:0`).toSeconds();
 
+      // Schedule all instruments
       audioEngine.schedulePattern(patterns.kick, 'kick', startTime);
       audioEngine.schedulePattern(patterns.bass, 'bass', startTime);
+      audioEngine.schedulePattern(patterns.acid, 'acid', startTime);
       audioEngine.schedulePattern(patterns.melody, 'melody', startTime);
       audioEngine.schedulePattern(patterns.arp, 'arp', startTime);
-      audioEngine.schedulePattern(patterns.hihat, 'hihat', startTime);
+      audioEngine.schedulePattern(patterns.pluck, 'pluck', startTime);
+      audioEngine.schedulePattern(patterns.stab, 'stab', startTime);
+      audioEngine.schedulePattern(patterns.piano, 'piano', startTime);
+      audioEngine.schedulePattern(patterns.strings, 'strings', startTime);
       audioEngine.schedulePattern(patterns.pad, 'pad', startTime);
+      audioEngine.schedulePattern(patterns.hihat, 'hihat', startTime);
+      audioEngine.schedulePattern(patterns.openhat, 'openhat', startTime);
+      audioEngine.schedulePattern(patterns.perc, 'perc', startTime);
 
       startBar += section.bars;
     });
@@ -158,46 +188,33 @@ export function Transport() {
       setIsPlaying(false);
       setCurrentTime('0:0:0');
     }, `${totalBars}:0:0`);
-  }, [sections, key, scale, kick, bass, melody, hihat, pad]);
+  }, [sections, key, scale, style, groove, kick, bass, melody, hihat, pad, pluck, stab, piano, strings, acid, perc, arp]);
 
   // Reschedule patterns when parameters change while playing
   useEffect(() => {
     if (isPlaying && isInitialized && !isRecording) {
-      // Stop current playback
-      const currentPosition = Tone.getTransport().position;
       Tone.getTransport().stop();
-
-      // Reschedule with current seed
       scheduleAllPatterns(seed);
-
-      // Resume from beginning (for simplicity)
       Tone.getTransport().position = 0;
       Tone.getTransport().start();
     }
-  }, [key, scale, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
+  }, [key, scale, style, groove, sections, isPlaying, isInitialized, isRecording, seed, scheduleAllPatterns]);
 
   const handlePlay = async () => {
     await initAudio();
-
-    // Generate new seed for fresh patterns
     const newSeed = Date.now();
     setSeed(newSeed);
-
-    // Schedule patterns with the new seed
     scheduleAllPatterns(newSeed);
-
     audioEngine.play();
     setIsPlaying(true);
   };
 
   const handleRegenerate = async () => {
     await initAudio();
-
     const newSeed = Date.now();
     setSeed(newSeed);
 
     if (isPlaying) {
-      // Stop, reschedule, restart
       Tone.getTransport().stop();
       Tone.getTransport().position = 0;
       scheduleAllPatterns(newSeed);
@@ -208,17 +225,13 @@ export function Transport() {
   const handleRandomizeAll = async () => {
     await initAudio();
     randomizeAll();
-
-    // Generate new seed
     const newSeed = Date.now();
     setSeed(newSeed);
 
-    // Small delay to let React update the store
     setTimeout(() => {
       if (isPlaying) {
         Tone.getTransport().stop();
         Tone.getTransport().position = 0;
-        // The useEffect will handle rescheduling
       }
     }, 50);
   };
@@ -227,15 +240,12 @@ export function Transport() {
     await initAudio();
     setIsRecording(true);
 
-    // Generate fresh patterns for export
     const exportSeed = Date.now();
-
     await audioEngine.startRecording();
     scheduleAllPatterns(exportSeed);
     audioEngine.play();
     setIsPlaying(true);
 
-    // Wait for the track to finish
     const totalBars = sections.reduce((sum, s) => sum + s.bars, 0);
     const durationMs = (totalBars * 4 * 60 * 1000) / bpm;
 
@@ -249,7 +259,7 @@ export function Transport() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `synthforge-${key}-${bpm}bpm-${Date.now()}.webm`;
+        a.download = `synthforge-${style}-${key}${scale}-${bpm}bpm.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -268,7 +278,7 @@ export function Transport() {
 
   return (
     <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-4">
-      <div className="flex items-center gap-6 flex-wrap">
+      <div className="flex items-center gap-4 flex-wrap">
         {/* Play/Stop buttons */}
         <div className="flex items-center gap-2">
           {!isPlaying ? (
@@ -287,50 +297,88 @@ export function Transport() {
             </button>
           )}
 
-          <div className="text-2xl font-mono text-white w-20">
+          <div className="text-2xl font-mono text-white w-16">
             {formatTime(currentTime)}
           </div>
         </div>
 
         {/* BPM */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-400">BPM</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={bpm}
-              onChange={(e) => setBPM(parseInt(e.target.value) || 128)}
-              className="w-16 bg-zinc-800 text-white text-center text-lg font-mono py-1 px-2 rounded border border-zinc-700 focus:border-green-500 outline-none"
-              min={80}
-              max={180}
-            />
-          </div>
+          <label className="text-xs text-zinc-500">BPM</label>
+          <input
+            type="number"
+            value={bpm}
+            onChange={(e) => setBPM(parseInt(e.target.value) || 128)}
+            className="w-14 bg-zinc-800 text-white text-center text-sm font-mono py-1 px-1 rounded border border-zinc-700 focus:border-green-500 outline-none"
+            min={80}
+            max={180}
+          />
         </div>
 
         {/* Key */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-400">KEY</label>
+          <label className="text-xs text-zinc-500">KEY</label>
           <select
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            className="bg-zinc-800 text-white text-lg font-mono py-1 px-3 rounded border border-zinc-700 focus:border-green-500 outline-none"
+            className="bg-zinc-800 text-white text-sm py-1 px-2 rounded border border-zinc-700 focus:border-green-500 outline-none"
           >
             {NOTES.map((note) => (
-              <option key={note} value={note}>
-                {note}
-              </option>
+              <option key={note} value={note}>{note}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Scale */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-zinc-500">SCALE</label>
+          <select
+            value={scale}
+            onChange={(e) => setScale(e.target.value as Scale)}
+            className="bg-zinc-800 text-white text-sm py-1 px-2 rounded border border-zinc-700 focus:border-green-500 outline-none"
+          >
+            {SCALES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Style */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-zinc-500">STYLE</label>
+          <select
+            value={style}
+            onChange={(e) => setStyle(e.target.value as TechnoStyle)}
+            className="bg-zinc-800 text-white text-sm py-1 px-2 rounded border border-zinc-700 focus:border-purple-500 outline-none"
+          >
+            {STYLES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Groove */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-zinc-500">GROOVE</label>
+          <select
+            value={groove}
+            onChange={(e) => setGroove(e.target.value as GrooveType)}
+            className="bg-zinc-800 text-white text-sm py-1 px-2 rounded border border-zinc-700 focus:border-purple-500 outline-none"
+          >
+            {GROOVES.map((g) => (
+              <option key={g} value={g}>{g}</option>
             ))}
           </select>
         </div>
 
         {/* Master Volume */}
-        <div className="flex items-center gap-3 min-w-[180px]">
-          <Volume2 className="w-5 h-5 text-zinc-400" />
+        <div className="flex items-center gap-2 min-w-[140px]">
+          <Volume2 className="w-4 h-4 text-zinc-500" />
           <Slider
             value={masterVolume}
             min={0}
             max={100}
-            label="MASTER"
+            label=""
             onChange={setMasterVolume}
             color="#00ff88"
           />
@@ -340,38 +388,36 @@ export function Transport() {
         <div className="flex items-center gap-2 ml-auto">
           <button
             onClick={handleRegenerate}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300 text-sm"
             title="Generate new pattern"
           >
             <RotateCcw className="w-4 h-4" />
-            <span className="text-sm">Regenerate</span>
+            <span className="hidden sm:inline">New</span>
           </button>
 
           <button
             onClick={handleRandomizeAll}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 transition-colors text-purple-400"
-            title="Randomize all parameters"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 transition-colors text-purple-400 text-sm"
+            title="Randomize everything"
           >
-            <Shuffle className="w-4 h-4" />
-            <span className="text-sm">Randomize All</span>
+            <Zap className="w-4 h-4" />
+            <span className="hidden sm:inline">Random</span>
           </button>
 
           <button
             onClick={handleExport}
             disabled={isRecording}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-colors text-green-400 disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-colors text-green-400 disabled:opacity-50 text-sm"
             title="Export to audio file"
           >
             <Download className="w-4 h-4" />
-            <span className="text-sm">
-              {isRecording ? 'Recording...' : 'Export'}
-            </span>
+            <span className="hidden sm:inline">{isRecording ? '...' : 'Export'}</span>
           </button>
 
           <button
             onClick={reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-400"
-            title="Reset all parameters"
+            className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-500"
+            title="Reset"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -379,12 +425,10 @@ export function Transport() {
       </div>
 
       {isRecording && (
-        <div className="mt-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-red-400 text-sm">
-              Recording in progress... The track will be exported when playback completes.
-            </span>
+        <div className="mt-3 p-2 rounded-lg bg-red-500/20 border border-red-500/30">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-red-400 text-xs">Recording...</span>
           </div>
         </div>
       )}

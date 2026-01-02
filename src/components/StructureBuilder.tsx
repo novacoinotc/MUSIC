@@ -9,6 +9,7 @@ const SECTION_COLORS: Record<TrackSection, string> = {
   buildup: '#facc15',
   drop: '#ef4444',
   breakdown: '#818cf8',
+  bridge: '#f472b6',
   outro: '#22d3ee',
 };
 
@@ -17,6 +18,7 @@ const SECTION_LABELS: Record<TrackSection, string> = {
   buildup: 'BUILD',
   drop: 'DROP',
   breakdown: 'BREAK',
+  bridge: 'BRIDGE',
   outro: 'OUTRO',
 };
 
@@ -38,6 +40,14 @@ export function StructureBuilder() {
       hasMelody: type === 'drop' || type === 'breakdown',
       hasHihat: type !== 'breakdown',
       hasPad: type !== 'drop',
+      hasPluck: type === 'drop',
+      hasStab: type === 'drop',
+      hasPiano: type === 'breakdown',
+      hasStrings: type === 'intro' || type === 'breakdown',
+      hasAcid: false,
+      hasPerc: type === 'drop' || type === 'buildup',
+      hasFx: type === 'buildup' || type === 'intro',
+      hasArp: type === 'drop' || type === 'buildup',
       intensity: type === 'drop' ? 100 : type === 'buildup' ? 60 : 40,
     };
     addSection(newSection);
