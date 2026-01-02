@@ -34,8 +34,8 @@ export function getOpenAI(): OpenAI {
 
 /**
  * Get the model to use for composition
- * Default: gpt-5-mini (fast, cost-effective, good for structured JSON output)
+ * Default: gpt-5.2 (OpenAI's flagship model for coding and agentic tasks)
  */
 export function getComposerModel(): string {
-  return process.env.OPENAI_MODEL ?? 'gpt-5-mini';
+  return process.env.OPENAI_MODEL ?? 'gpt-5.2';
 }

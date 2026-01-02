@@ -1,347 +1,376 @@
 /**
- * Composer Brain API Route - GPT Integration
+ * Music Blueprint API - GPT-5.2 Integration via Responses API
  * POST /api/compose
  *
- * Generates a structured musical plan using OpenAI's API.
- * Returns a ComposerPlan JSON that can be applied to the track store.
+ * Generates a structured Music Blueprint JSON for Tone.js interpretation.
+ * Uses OpenAI Responses API (POST /v1/responses) with strict JSON schema.
  *
  * Example Request:
  * POST /api/compose
- * {
- *   "prompt": "Dark hypnotic track with emotional breakdown, Ka:st style",
- *   "durationBars": 128,
- *   "bpmHint": 123,
- *   "styleHint": "afterlife_kast"
- * }
+ * { "prompt": "Dark hypnotic track, Ka:st style", "seed": 42 }
  *
  * Example Response:
  * {
  *   "success": true,
- *   "plan": {
- *     "style": "afterlife_kast",
+ *   "blueprint": {
  *     "bpm": 123,
  *     "key": "A",
  *     "scale": "minor",
- *     "groove": "straight",
- *     "energy_curve": [2, 3, 5, 7, 9, 4, 6, 8, 10, 3],
- *     "global_rules": {
- *       "max_simultaneous_layers": 4,
- *       "high_end_limit_hz": 10000,
- *       "silence_before_drop": true,
- *       "melody_density_cap": 35,
- *       "arp_density_cap": 40,
- *       "bass_movement": "filter_only"
- *     },
- *     "sections": [
- *       { "type": "intro", "bars": 16, "focus": "space", "allowed_layers": ["pad", "strings"] },
- *       ...
- *     ],
- *     "instrument_targets": { ... }
+ *     "vibe": ["dark", "hypnotic", "deep"],
+ *     "structure": [...],
+ *     "instruments": {...},
+ *     "patterns": {...}
  *   }
  * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAI, getComposerModel } from '@/lib/openaiClient';
-import {
-  ComposeRequestSchema,
-  ComposerPlanSchema,
-  type ComposeResponse,
-} from '@/types/composer';
+import OpenAI from 'openai';
+import { randomUUID } from 'crypto';
 
-// Simple in-memory rate limiting (1 request per 2 seconds per IP)
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 2000;
+// Force Node.js runtime (not Edge)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const lastRequest = rateLimitMap.get(ip) || 0;
-
-  if (now - lastRequest < RATE_LIMIT_MS) {
-    return false;
-  }
-
-  rateLimitMap.set(ip, now);
-  return true;
+// Types
+interface NoteEvent {
+  time: string; // "bar:beat:sixteenth"
+  note: string;
+  duration: string;
+  velocity: number;
 }
 
-// Clean up old rate limit entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, timestamp] of rateLimitMap.entries()) {
-    if (now - timestamp > 60000) {
-      rateLimitMap.delete(ip);
-    }
-  }
-}, 60000);
+interface InstrumentParams {
+  cutoff?: number;
+  resonance?: number;
+  attack?: number;
+  decay?: number;
+  sustain?: number;
+  release?: number;
+  drive?: number;
+  reverbMix?: number;
+  delayMix?: number;
+  pitch?: number;
+  [key: string]: number | string | undefined;
+}
 
-// System prompt for the AI composer
-const SYSTEM_PROMPT = `Eres un productor de melodic techno estilo Afterlife, específicamente Ka:st. Debes devolver SOLO JSON válido según el schema proporcionado.
+interface Section {
+  type: 'intro' | 'buildup' | 'drop' | 'breakdown' | 'outro';
+  bars: number;
+  intensity: number; // 0-10
+}
 
-PRIORIDADES DE PRODUCCIÓN:
-- Bajo profundo, oscuro, underground
-- Emoción contenida, no explosiva
-- Progresión lenta y cinematográfica
-- Pocos elementos simultáneos (máximo 4, solo 5 en drop)
-- Repetición hipnótica con micro-evolución
+interface MusicBlueprint {
+  bpm: number;
+  key: string;
+  scale: string;
+  vibe: string[];
+  structure: Section[];
+  instruments: Record<string, InstrumentParams>;
+  patterns: Record<string, NoteEvent[]>;
+}
 
-REGLAS DE MELODÍA:
-- Sparse y memorable: 2-5 notas por frase
-- Frase de 4-8 compases que repite
-- Variación con filtro/reverb, NO con notas nuevas
-- Prohibido: leads agudos chillones
+interface ComposeRequest {
+  prompt: string;
+  seed?: number;
+}
 
-REGLAS DE BAJO:
-- Nota larga + movimiento de filtro
-- NO walking bass
-- Sub profundo, protagonista del mix
+interface ComposeResponse {
+  success: boolean;
+  blueprint?: MusicBlueprint;
+  error?: string;
+  detail?: string;
+  requestId?: string;
+}
 
-REGLAS DE RITMO:
-- Hi-hats: offbeat con swing sutil
-- Kick: cuatro en el suelo, limpio
-- Clap/rim en 2 y 4, sutil
-
-ESTRUCTURA BASE (ajustable):
-- Intro: 16-32 bars (pad + strings, sin ritmo)
-- Groove: 16-32 bars (kick + bass + hats)
-- Development: 16 bars (añadir arp o melody)
-- Pre-drop: 2 bars silencio (solo pad/FX)
-- Drop: 32-64 bars (máximo 5 capas)
-- Breakdown: 16 bars (sin kick, emocional)
-- Build: 16 bars (kick vuelve, tensión)
-- Drop 2: 32 bars (variación del drop 1)
-- Outro: 16 bars (elementos salen)
-
-ESCALAS PREFERIDAS: minor, phrygian, harmonicMinor
-KEYS PREFERIDOS: A, D, F#, C, G, E
-BPM: 122-124 ideal
-
-Devuelve style SIEMPRE como "afterlife_kast".
-El JSON debe seguir exactamente el schema ComposerPlan.`;
-
-// JSON Schema for structured output
-const COMPOSER_PLAN_JSON_SCHEMA = {
-  name: 'ComposerPlan',
-  strict: false,
+// JSON Schema for strict output (GPT-5.2 Responses API)
+const BLUEPRINT_SCHEMA = {
+  name: 'MusicBlueprint',
+  strict: true,
   schema: {
     type: 'object',
     properties: {
-      style: { type: 'string' },
       bpm: { type: 'number' },
       key: { type: 'string' },
       scale: { type: 'string' },
-      groove: { type: 'string' },
-      energy_curve: {
-        type: 'array',
-        items: { type: 'number' },
-      },
-      global_rules: {
-        type: 'object',
-        properties: {
-          max_simultaneous_layers: { type: 'number' },
-          high_end_limit_hz: { type: 'number' },
-          silence_before_drop: { type: 'boolean' },
-          melody_density_cap: { type: 'number' },
-          arp_density_cap: { type: 'number' },
-          bass_movement: { type: 'string', enum: ['filter_only', 'note_sparse'] },
-        },
-        required: [
-          'max_simultaneous_layers',
-          'high_end_limit_hz',
-          'silence_before_drop',
-          'melody_density_cap',
-          'arp_density_cap',
-          'bass_movement',
-        ],
-        additionalProperties: false,
-      },
-      sections: {
+      vibe: { type: 'array', items: { type: 'string' } },
+      structure: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            type: { type: 'string', enum: ['intro', 'buildup', 'breakdown', 'drop', 'outro'] },
+            type: { type: 'string', enum: ['intro', 'buildup', 'drop', 'breakdown', 'outro'] },
             bars: { type: 'number' },
-            focus: { type: 'string', enum: ['space', 'groove', 'tension', 'emotion', 'release'] },
-            allowed_layers: {
-              type: 'array',
-              items: {
-                type: 'string',
-                enum: [
-                  'kick', 'bass', 'hihat', 'openhat', 'perc', 'pad', 'melody',
-                  'arp', 'pluck', 'stab', 'piano', 'strings', 'acid', 'vocal', 'fx',
-                ],
-              },
-            },
+            intensity: { type: 'number' },
           },
-          required: ['type', 'bars', 'focus', 'allowed_layers'],
+          required: ['type', 'bars', 'intensity'],
           additionalProperties: false,
         },
       },
-      instrument_targets: {
+      instruments: {
         type: 'object',
-        properties: {
-          kick: { type: 'object', additionalProperties: true },
-          bass: { type: 'object', additionalProperties: true },
-          melody: { type: 'object', additionalProperties: true },
-          hihat: { type: 'object', additionalProperties: true },
-          pad: { type: 'object', additionalProperties: true },
-          arp: { type: 'object', additionalProperties: true },
-          pluck: { type: 'object', additionalProperties: true },
-          stab: { type: 'object', additionalProperties: true },
-          piano: { type: 'object', additionalProperties: true },
-          strings: { type: 'object', additionalProperties: true },
-          acid: { type: 'object', additionalProperties: true },
-          perc: { type: 'object', additionalProperties: true },
-          vocal: { type: 'object', additionalProperties: true },
+        additionalProperties: {
+          type: 'object',
+          properties: {
+            cutoff: { type: 'number' },
+            resonance: { type: 'number' },
+            attack: { type: 'number' },
+            decay: { type: 'number' },
+            sustain: { type: 'number' },
+            release: { type: 'number' },
+            drive: { type: 'number' },
+            reverbMix: { type: 'number' },
+            delayMix: { type: 'number' },
+            pitch: { type: 'number' },
+          },
+          additionalProperties: false,
         },
-        required: [],
-        additionalProperties: false,
+      },
+      patterns: {
+        type: 'object',
+        additionalProperties: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              time: { type: 'string' },
+              note: { type: 'string' },
+              duration: { type: 'string' },
+              velocity: { type: 'number' },
+            },
+            required: ['time', 'note', 'duration', 'velocity'],
+            additionalProperties: false,
+          },
+        },
       },
     },
-    required: [
-      'style',
-      'bpm',
-      'key',
-      'scale',
-      'groove',
-      'energy_curve',
-      'global_rules',
-      'sections',
-      'instrument_targets',
-    ],
+    required: ['bpm', 'key', 'scale', 'vibe', 'structure', 'instruments', 'patterns'],
     additionalProperties: false,
   },
 };
 
-export async function POST(request: NextRequest): Promise<NextResponse<ComposeResponse>> {
-  // Get client IP for rate limiting
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
+// System instructions for Afterlife/Ka:st style
+const SYSTEM_INSTRUCTIONS = `You are a melodic techno producer specializing in Afterlife / Ka:st style.
+Generate a Music Blueprint JSON that Tone.js can interpret.
 
-  // Check rate limit
-  if (!checkRateLimit(ip)) {
+PRODUCTION RULES:
+- BPM: 118-128 (prefer 122-124)
+- Scales: minor, phrygian, harmonicMinor, dorian
+- Keys: prefer A, D, F#, C, G, E
+
+SOUND DESIGN:
+- Deep, warm sub bass (protagonist of the mix)
+- Discrete hi-hats with subtle swing
+- Minimal, emotive melodies (2-5 notes per phrase)
+- Slow cinematic progression
+- Maximum 4 layers simultaneously (5 in drop)
+- Lots of space between notes
+- Filter movement over note changes
+
+STRUCTURE:
+- intro: 16-32 bars, intensity 1-3 (pads only)
+- buildup: 16 bars, intensity 4-6 (add kick, bass)
+- drop: 32-64 bars, intensity 7-9 (full groove)
+- breakdown: 16 bars, intensity 3-5 (emotional, no kick)
+- outro: 16 bars, intensity 2-4 (elements exit)
+
+INSTRUMENTS TO INCLUDE:
+- kick: punch 0-100, tone 0-100, decay ms
+- bass: cutoff 0-100, resonance 0-100, drive 0-100
+- hats: decay 0-100, pitch 0-100, swing 0-100
+- clap: decay 0-100, reverbMix 0-100
+- perc: pitch 0-100, decay 0-100
+- pad: cutoff 0-100, attack ms, release ms, reverbMix 0-100
+- arp: cutoff 0-100, rate 0-100, swing 0-100
+- lead: cutoff 0-100, attack ms, release ms, delayMix 0-100
+- pluck: decay 0-100, brightness 0-100, reverbMix 0-100
+- vocalPad: brightness 0-100, reverbMix 0-100, attack ms
+
+PATTERNS:
+- Use time format "bar:beat:sixteenth" (e.g., "0:0:0", "1:2:0")
+- Keep patterns sparse and hypnotic
+- Bass: long notes with filter automation
+- Kick: four-on-the-floor
+- Hats: offbeat pattern
+- Melodies: 4-8 bar phrases that repeat
+
+Return ONLY valid JSON matching the schema exactly.`;
+
+// Get OpenAI client
+function getOpenAI(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing OPENAI_API_KEY');
+  }
+  return new OpenAI({ apiKey });
+}
+
+// Get model (default gpt-5.2)
+function getModel(): string {
+  return process.env.OPENAI_MODEL ?? 'gpt-5.2';
+}
+
+// Parse blueprint from Responses API output
+function parseBlueprint(response: OpenAI.Responses.Response): MusicBlueprint {
+  // Cast to any to handle various response formats
+  const resp = response as unknown as Record<string, unknown>;
+
+  // Try output_text first (simpler format)
+  if (resp.output_text && typeof resp.output_text === 'string') {
+    return JSON.parse(resp.output_text);
+  }
+
+  // Try output array (structured format)
+  if (Array.isArray(resp.output)) {
+    for (const item of resp.output) {
+      const itemObj = item as Record<string, unknown>;
+      if (itemObj.type === 'message' && Array.isArray(itemObj.content)) {
+        for (const content of itemObj.content) {
+          const contentObj = content as Record<string, unknown>;
+          if (contentObj.text && typeof contentObj.text === 'string') {
+            return JSON.parse(contentObj.text);
+          }
+        }
+      }
+    }
+  }
+
+  throw new Error('No parseable content in response');
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<ComposeResponse>> {
+  const requestId = randomUUID().slice(0, 8);
+  const startTime = Date.now();
+
+  console.log(`[Compose API] [${requestId}] Request received`);
+
+  // Check API key first
+  if (!process.env.OPENAI_API_KEY) {
+    console.error(`[Compose API] [${requestId}] Missing OPENAI_API_KEY`);
     return NextResponse.json(
-      { success: false, error: 'Rate limit exceeded. Please wait 2 seconds.' },
-      { status: 429 }
+      { success: false, error: 'Missing OPENAI_API_KEY', requestId },
+      { status: 500 }
     );
   }
 
   try {
-    // Parse and validate request body
-    const body = await request.json();
-    const parseResult = ComposeRequestSchema.safeParse(body);
+    // Parse request body
+    const body = await request.json() as ComposeRequest;
+    const { prompt, seed } = body;
 
-    if (!parseResult.success) {
+    if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
-        {
-          success: false,
-          error: `Invalid request: ${parseResult.error.issues.map(e => e.message).join(', ')}`,
-        },
+        { success: false, error: 'Invalid request: prompt is required', requestId },
         { status: 400 }
       );
     }
 
-    const { prompt, seed, durationBars, bpmHint, styleHint } = parseResult.data;
+    console.log(`[Compose API] [${requestId}] Prompt: "${prompt.slice(0, 50)}..."`);
 
     // Build user message
-    const userMessage = `
-Genera un plan musical para: "${prompt}"
+    const userMessage = `Create a Music Blueprint for: "${prompt}"
+${seed ? `Use seed ${seed} for reproducibility.` : ''}
+Follow all Afterlife/Ka:st production rules. Return valid JSON only.`;
 
-Parámetros:
-- Duración total aproximada: ${durationBars} bars
-${bpmHint ? `- BPM sugerido: ${bpmHint}` : '- BPM: elige entre 122-124'}
-${styleHint ? `- Estilo: ${styleHint}` : '- Estilo: afterlife_kast'}
-${seed ? `- Seed para reproducibilidad: ${seed}` : ''}
-
-Genera el JSON del ComposerPlan siguiendo todas las reglas de producción Ka:st/Afterlife.
-Asegúrate de que:
-1. La suma de bars de todas las secciones sea aproximadamente ${durationBars}
-2. energy_curve tenga un valor por cada sección
-3. instrument_targets incluya parámetros oscuros y cálidos
-4. Máximo 4 capas por sección (5 en drop)
-5. silence_before_drop = true si hay un pre-drop de 2 bars
-`;
-
-    // Call OpenAI API
+    // Call OpenAI Responses API
     const openai = getOpenAI();
-    const model = getComposerModel();
+    const model = getModel();
 
-    const response = await openai.chat.completions.create({
+    console.log(`[Compose API] [${requestId}] Calling OpenAI Responses API with model: ${model}`);
+
+    const response = await openai.responses.create({
       model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+      input: [
+        { role: 'system', content: SYSTEM_INSTRUCTIONS },
         { role: 'user', content: userMessage },
       ],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 4000,
+      text: {
+        format: {
+          type: 'json_schema',
+          name: BLUEPRINT_SCHEMA.name,
+          schema: BLUEPRINT_SCHEMA.schema,
+          strict: true,
+        },
+      },
     });
 
-    // Extract content
-    const content = response.choices[0]?.message?.content;
+    const latency = Date.now() - startTime;
+    console.log(`[Compose API] [${requestId}] OpenAI responded in ${latency}ms`);
 
-    if (!content) {
-      console.error('[Compose API] Empty response from OpenAI');
-      return NextResponse.json(
-        { success: false, error: 'Empty response from AI' },
-        { status: 500 }
-      );
-    }
-
-    // Parse JSON response
-    let planData: unknown;
+    // Parse the blueprint
+    let blueprint: MusicBlueprint;
     try {
-      planData = JSON.parse(content);
+      blueprint = parseBlueprint(response);
     } catch (parseError) {
-      console.error('[Compose API] Failed to parse JSON:', content.substring(0, 200));
-      return NextResponse.json(
-        { success: false, error: 'Invalid JSON response from AI' },
-        { status: 500 }
-      );
-    }
-
-    // Validate against schema
-    const planResult = ComposerPlanSchema.safeParse(planData);
-
-    if (!planResult.success) {
-      console.error('[Compose API] Schema validation failed:', planResult.error.issues);
+      console.error(`[Compose API] [${requestId}] Parse error:`, parseError);
+      console.error(`[Compose API] [${requestId}] Raw response:`, JSON.stringify(response).slice(0, 500));
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid plan structure: ${planResult.error.issues.map(e => e.message).join(', ')}`,
+          error: 'Failed to parse AI response',
+          detail: parseError instanceof Error ? parseError.message : 'Unknown parse error',
+          requestId,
         },
         { status: 500 }
       );
     }
 
-    // Success!
-    return NextResponse.json({
-      success: true,
-      plan: planResult.data,
-    });
-  } catch (error) {
-    // Log error server-side without exposing details
-    console.error('[Compose API] Error:', error instanceof Error ? error.message : 'Unknown error');
-
-    // Check for specific OpenAI errors
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        return NextResponse.json(
-          { success: false, error: 'API configuration error' },
-          { status: 500 }
-        );
-      }
-      if (error.message.includes('rate limit')) {
-        return NextResponse.json(
-          { success: false, error: 'AI service rate limit exceeded' },
-          { status: 429 }
-        );
-      }
+    // Validate basic structure
+    if (!blueprint.bpm || !blueprint.key || !blueprint.structure) {
+      console.error(`[Compose API] [${requestId}] Invalid blueprint structure`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid blueprint structure',
+          detail: 'Missing required fields: bpm, key, or structure',
+          requestId,
+        },
+        { status: 500 }
+      );
     }
 
+    console.log(`[Compose API] [${requestId}] Success - BPM: ${blueprint.bpm}, Key: ${blueprint.key}, Sections: ${blueprint.structure.length}`);
+
+    return NextResponse.json({
+      success: true,
+      blueprint,
+      requestId,
+    });
+
+  } catch (error) {
+    const latency = Date.now() - startTime;
+    console.error(`[Compose API] [${requestId}] Error after ${latency}ms:`, error);
+
+    // Handle OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+      console.error(`[Compose API] [${requestId}] OpenAI API Error - Status: ${error.status}, Message: ${error.message}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `OpenAI API error: ${error.status}`,
+          detail: error.message,
+          requestId,
+        },
+        { status: 500 }
+      );
+    }
+
+    // Handle missing API key
+    if (error instanceof Error && error.message === 'Missing OPENAI_API_KEY') {
+      return NextResponse.json(
+        { success: false, error: 'Missing OPENAI_API_KEY', requestId },
+        { status: 500 }
+      );
+    }
+
+    // Generic error
     return NextResponse.json(
-      { success: false, error: 'Failed to generate composition plan' },
+      {
+        success: false,
+        error: 'Failed to generate blueprint',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+        requestId,
+      },
       { status: 500 }
     );
   }
