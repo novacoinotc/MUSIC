@@ -3,7 +3,7 @@
 import type {
   NoteEvent, KickParams, BassParams, MelodyParams, HiHatParams, PadParams,
   PluckParams, StabParams, PianoParams, StringsParams, AcidParams, PercParams,
-  ArpParams, VocalParams, Scale, SectionConfig, TechnoStyle, GrooveType
+  ArpParams, VocalParams, Scale, SectionConfig, TechnoStyle, GrooveType, ChordProgression
 } from '@/types';
 
 // Extended scales for more variety
@@ -27,6 +27,59 @@ const SCALES: Record<Scale, number[]> = {
 };
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+// Chord numeral to scale degree mapping (for minor key)
+// i = 1 (tonic), ii° = 2, III = 3, iv = 4, v = 5, VI = 6, VII = 7
+const CHORD_NUMERALS: Record<string, number> = {
+  'i': 0,    // Tonic minor
+  'ii': 1,   // Supertonic (dim in minor)
+  'III': 2,  // Mediant major
+  'iv': 3,   // Subdominant minor
+  'v': 4,    // Dominant minor (natural minor)
+  'V': 4,    // Dominant major (harmonic minor)
+  'VI': 5,   // Submediant major
+  'VII': 6,  // Subtonic major
+  'vii': 6,  // Leading tone dim
+  'IV': 3,   // Subdominant major (borrowed)
+};
+
+// Parse chord progression string into array of scale degrees
+function parseChordProgression(progression: ChordProgression): number[] {
+  const parts = progression.split('-');
+  return parts.map(numeral => CHORD_NUMERALS[numeral] ?? 0);
+}
+
+// Get chord tones for a given scale degree (triads: root, 3rd, 5th)
+function getChordTones(scaleDegree: number, scaleNotes: string[]): string[] {
+  const root = scaleDegree % scaleNotes.length;
+  const third = (scaleDegree + 2) % scaleNotes.length;
+  const fifth = (scaleDegree + 4) % scaleNotes.length;
+  return [scaleNotes[root], scaleNotes[third], scaleNotes[fifth]];
+}
+
+// Get the current chord based on bar position and progression
+function getCurrentChord(
+  bar: number,
+  barsPerChord: number,
+  progression: number[],
+  scaleNotes: string[]
+): string[] {
+  const chordIndex = Math.floor(bar / barsPerChord) % progression.length;
+  const scaleDegree = progression[chordIndex];
+  return getChordTones(scaleDegree, scaleNotes);
+}
+
+// Get root note for current chord
+function getCurrentRoot(
+  bar: number,
+  barsPerChord: number,
+  progression: number[],
+  scaleNotes: string[]
+): string {
+  const chordIndex = Math.floor(bar / barsPerChord) % progression.length;
+  const scaleDegree = progression[chordIndex];
+  return scaleNotes[scaleDegree % scaleNotes.length];
+}
 
 // Seeded random for reproducibility
 function seededRandom(seed: number): () => number {
@@ -778,7 +831,7 @@ export function generatePercPattern(
 }
 
 // ========== VOCAL PATTERNS ==========
-// Ethereal "ooh/aah" style vocal patterns - sparse and emotional
+// Ethereal "ooh/aah" style vocal patterns - emotional and present in the mix
 export function generateVocalPattern(
   bars: number,
   root: string,
@@ -795,28 +848,27 @@ export function generateVocalPattern(
   const scaleNotes = getScaleNotes(root, scale, octave);
   const upperNotes = getScaleNotes(root, scale, octave + 1);
 
-  // Very sparse - vocals are special, used for emphasis
-  // Only play every 4-8 bars
-  const playEveryNBars = style === 'melodic' || style === 'progressive' ? 4 : 8;
+  // Play vocals more frequently - every 2-4 bars for melodic techno
+  const playEveryNBars = style === 'melodic' || style === 'progressive' ? 2 : 4;
 
   // Simple chord progressions for vocal pads
   const vocalChords = [
     [0, 2, 4],     // Simple triad
     [0, 4, 7],     // Root, 5th, octave feel
     [2, 4, 7],     // 2nd inversion
+    [0, 2],        // Simple 2-note harmony
   ];
 
   for (let bar = 0; bar < bars; bar++) {
-    // Only play on certain bars
+    // Play on regular intervals
     if (bar % playEveryNBars !== 0) continue;
-    if (random() > 0.7) continue; // Even sparser
 
     const chord = vocalChords[Math.floor(random() * vocalChords.length)];
     const notes = params.gender === 'both'
       ? chord.map(i => [scaleNotes[i % scaleNotes.length], upperNotes[i % upperNotes.length]]).flat()
       : chord.map(i => scaleNotes[i % scaleNotes.length]);
 
-    // Long, sustained notes
+    // Long, sustained notes - 2-4 bars duration
     const duration = random() > 0.5 ? '2m' : '1m';
 
     notes.forEach((note, i) => {
@@ -824,7 +876,252 @@ export function generateVocalPattern(
         note,
         time: `${bar}:0:0`,
         duration,
-        velocity: 0.25 + random() * 0.1 - (i * 0.02), // Slightly lower velocity for upper notes
+        velocity: 0.45 + random() * 0.15 - (i * 0.02), // Higher base velocity
+      });
+    });
+  }
+
+  return events;
+}
+
+// ========== CHORD PROGRESSION-AWARE GENERATORS ==========
+
+// Bass pattern that follows chord progression
+function generateBassPatternWithProgression(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: BassParams,
+  intensity: number,
+  style: TechnoStyle,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+  const octave = 1 + params.octave;
+  const scaleNotes = getScaleNotes(root, scale, octave);
+
+  // Each chord lasts 4 bars (melodic techno standard)
+  const barsPerChord = 4;
+
+  for (let bar = 0; bar < bars; bar++) {
+    // Get root note for current chord in progression
+    const bassRoot = getCurrentRoot(bar, barsPerChord, progression, scaleNotes);
+
+    // Bass positions - play on offbeats
+    const positions = [2, 10];
+
+    for (const pos of positions) {
+      if (random() * 100 > intensity * 1.2) continue;
+
+      const beat = Math.floor(pos / 4);
+      const sixteenth = pos % 4;
+
+      events.push({
+        note: bassRoot,
+        time: `${bar}:${beat}:${sixteenth}`,
+        duration: '8n',
+        velocity: 0.7 + random() * 0.15,
+      });
+    }
+  }
+
+  return events;
+}
+
+// Melody pattern that follows chord progression
+function generateMelodyPatternWithProgression(
+  bars: number,
+  params: MelodyParams,
+  style: TechnoStyle,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const baseOctave = params.octave;
+  const scaleNotes = getScaleNotes(params.rootNote, params.scale, baseOctave);
+  const upperNotes = getScaleNotes(params.rootNote, params.scale, baseOctave + 1);
+
+  const barsPerChord = 4;
+  const playEveryNBars = params.density > 70 ? 1 : params.density > 40 ? 2 : 4;
+
+  for (let bar = 0; bar < bars; bar++) {
+    if (bar % playEveryNBars !== 0 && random() > 0.3) continue;
+
+    // Get chord tones for current position
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+    const upperChordTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+    const availableNotes = [...chordTones, ...upperChordTones.slice(0, 2)];
+
+    // Play 2-3 notes per bar
+    const numNotes = 2 + Math.floor(random() * 2);
+
+    for (let i = 0; i < numNotes; i++) {
+      const noteIdx = Math.floor(random() * availableNotes.length);
+      const positions = [0, 6, 12];
+      const pos = positions[i % positions.length];
+
+      events.push({
+        note: availableNotes[noteIdx],
+        time: `${bar}:${Math.floor(pos / 4)}:${pos % 4}`,
+        duration: '4n',
+        velocity: 0.4 + random() * 0.2,
+      });
+    }
+  }
+
+  return events;
+}
+
+// Pad pattern with chord progression
+function generatePadPatternWithProgression(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: PadParams,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const scaleNotes = getScaleNotes(root, scale, 2);
+  const upperNotes = getScaleNotes(root, scale, 3);
+
+  // Each chord change every 4 bars
+  const barsPerChord = 4;
+
+  for (let bar = 0; bar < bars; bar += barsPerChord) {
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+    const upperTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+
+    // Play full chord
+    [...chordTones, upperTones[0]].forEach((note, i) => {
+      events.push({
+        note,
+        time: `${bar}:0:0`,
+        duration: `${Math.min(barsPerChord, bars - bar)}m`,
+        velocity: 0.25 + random() * 0.1 - (i * 0.02),
+      });
+    });
+  }
+
+  return events;
+}
+
+// Piano pattern with chord progression
+function generatePianoPatternWithProgression(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: PianoParams,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const octave = params.octave;
+  const scaleNotes = getScaleNotes(root, scale, octave);
+  const upperNotes = getScaleNotes(root, scale, octave + 1);
+
+  const barsPerChord = 4;
+
+  for (let bar = 0; bar < bars; bar += barsPerChord) {
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+    const upperTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+
+    // Play chord as piano voicing
+    [...chordTones, upperTones[0]].forEach((note, i) => {
+      events.push({
+        note,
+        time: `${bar}:0:0`,
+        duration: '1m',
+        velocity: (params.velocity / 100) * (0.4 + random() * 0.15 - (i * 0.02)),
+      });
+    });
+  }
+
+  return events;
+}
+
+// Strings pattern with chord progression
+function generateStringsPatternWithProgression(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: StringsParams,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const scaleNotes = getScaleNotes(root, scale, 3);
+  const upperNotes = getScaleNotes(root, scale, 4);
+
+  const barsPerChord = 4;
+
+  for (let bar = 0; bar < bars; bar += barsPerChord) {
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+    const upperTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+
+    // Strings play full sustained chords
+    [...chordTones, upperTones[0]].forEach((note, i) => {
+      events.push({
+        note,
+        time: `${bar}:0:0`,
+        duration: `${Math.min(barsPerChord, bars - bar)}m`,
+        velocity: 0.25 + random() * 0.1,
+      });
+    });
+  }
+
+  return events;
+}
+
+// Vocal pattern with chord progression
+function generateVocalPatternWithProgression(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: VocalParams,
+  style: TechnoStyle,
+  progression: number[],
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const octave = params.gender === 'male' ? 2 : params.gender === 'female' ? 4 : 3;
+  const scaleNotes = getScaleNotes(root, scale, octave);
+  const upperNotes = getScaleNotes(root, scale, octave + 1);
+
+  const barsPerChord = 4;
+  const playEveryNBars = style === 'melodic' || style === 'progressive' ? 2 : 4;
+
+  for (let bar = 0; bar < bars; bar++) {
+    if (bar % playEveryNBars !== 0) continue;
+
+    // Get chord tones for ethereal vocal harmonies
+    const chordTones = getCurrentChord(bar, barsPerChord, progression, scaleNotes);
+    const upperTones = getCurrentChord(bar, barsPerChord, progression, upperNotes);
+
+    const notes = params.gender === 'both'
+      ? [...chordTones, upperTones[0]]
+      : chordTones;
+
+    const duration = random() > 0.5 ? '2m' : '1m';
+
+    notes.forEach((note, i) => {
+      events.push({
+        note,
+        time: `${bar}:0:0`,
+        duration,
+        velocity: 0.45 + random() * 0.15 - (i * 0.02),
       });
     });
   }
@@ -862,6 +1159,8 @@ export function generateSectionPatterns(
   section: SectionConfig,
   root: string,
   scale: Scale,
+  secondaryScale: Scale,
+  chordProgression: ChordProgression,
   style: TechnoStyle,
   groove: GrooveType,
   kickParams: KickParams,
@@ -881,36 +1180,43 @@ export function generateSectionPatterns(
 ): AllPatterns {
   const melodyWithRoot = { ...melodyParams, rootNote: root, scale };
 
+  // Parse chord progression for harmonic content
+  const progression = parseChordProgression(chordProgression);
+
+  // Use secondary scale for breakdowns/outros for variety
+  const useSecondaryScale = section.type === 'breakdown' || section.type === 'outro';
+  const activeScale = useSecondaryScale ? secondaryScale : scale;
+
   return {
     kick: section.hasKick
       ? generateKickPattern(section.bars, section.intensity, style, groove, seed)
       : [],
     bass: section.hasBass
-      ? generateBassPattern(section.bars, root, scale, bassParams, section.intensity, style, seed + 1000)
+      ? generateBassPatternWithProgression(section.bars, root, activeScale, bassParams, section.intensity, style, progression, seed + 1000)
       : [],
     acid: section.hasAcid
-      ? generateAcidPattern(section.bars, root, scale, acidParams, section.intensity, seed + 1500)
+      ? generateAcidPattern(section.bars, root, activeScale, acidParams, section.intensity, seed + 1500)
       : [],
     melody: section.hasMelody
-      ? generateMelodyPattern(section.bars, melodyWithRoot, style, seed + 2000)
+      ? generateMelodyPatternWithProgression(section.bars, { ...melodyWithRoot, scale: activeScale }, style, progression, seed + 2000)
       : [],
     arp: section.hasArp
-      ? generateArpPattern(section.bars, root, scale, melodyWithRoot, arpParams, seed + 3000)
+      ? generateArpPattern(section.bars, root, activeScale, { ...melodyWithRoot, scale: activeScale }, arpParams, seed + 3000)
       : [],
     pluck: section.hasPluck
-      ? generatePluckPattern(section.bars, root, scale, pluckParams, section.intensity, seed + 3500)
+      ? generatePluckPattern(section.bars, root, activeScale, pluckParams, section.intensity, seed + 3500)
       : [],
     stab: section.hasStab
-      ? generateStabPattern(section.bars, root, scale, stabParams, section.intensity, seed + 4000)
+      ? generateStabPattern(section.bars, root, activeScale, stabParams, section.intensity, seed + 4000)
       : [],
     piano: section.hasPiano
-      ? generatePianoPattern(section.bars, root, scale, pianoParams, seed + 4500)
+      ? generatePianoPatternWithProgression(section.bars, root, activeScale, pianoParams, progression, seed + 4500)
       : [],
     strings: section.hasStrings
-      ? generateStringsPattern(section.bars, root, scale, stringsParams, seed + 5000)
+      ? generateStringsPatternWithProgression(section.bars, root, activeScale, stringsParams, progression, seed + 5000)
       : [],
     pad: section.hasPad
-      ? generatePadPattern(section.bars, root, scale, padParams, seed + 5500)
+      ? generatePadPatternWithProgression(section.bars, root, activeScale, padParams, progression, seed + 5500)
       : [],
     hihat: section.hasHihat
       ? generateHihatPattern(section.bars, hihatParams, section.intensity, style, seed + 6000)
@@ -923,7 +1229,7 @@ export function generateSectionPatterns(
       ? generatePercPattern(section.bars, percParams, section.intensity, style, seed + 7000)
       : [],
     vocal: section.hasVocal
-      ? generateVocalPattern(section.bars, root, scale, vocalParams, style, seed + 8000)
+      ? generateVocalPatternWithProgression(section.bars, root, activeScale, vocalParams, style, progression, seed + 8000)
       : [],
   };
 }
