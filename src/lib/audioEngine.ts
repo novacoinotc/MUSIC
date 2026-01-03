@@ -732,13 +732,30 @@ class AudioEngine {
     this.arpSynth.triggerAttackRelease(note, duration, time ?? Tone.now(), velocity ?? 0.35);
   }
 
-  playPluck(note: string, time?: number, velocity?: number) {
+  // FIXED: Added duration parameter - NEVER use triggerAttack without release
+  playPluck(note: string, duration?: string, time?: number, velocity?: number) {
     if (!this.pluckSynth) return;
     const t = time ?? Tone.now();
+    const dur = this.clampDuration(duration); // Validate duration
+    // PluckSynth uses Karplus-Strong (natural decay), but we schedule a release anyway
     this.pluckSynth.triggerAttack(note, t);
     if (this.pluckSynth2) {
-      this.pluckSynth2.triggerAttackRelease(note, '8n', t, (velocity ?? 0.4) * 0.6);
+      this.pluckSynth2.triggerAttackRelease(note, dur, t, (velocity ?? 0.4) * 0.6);
     }
+  }
+
+  // Duration validation helper - ensures we never pass undefined/invalid durations
+  private clampDuration(duration?: string): string {
+    if (!duration || typeof duration !== 'string' || duration.trim() === '') {
+      return '8n'; // Safe default
+    }
+    // Valid Tone.js duration patterns
+    const validPatterns = /^(\d+(\.\d+)?[nmst]\.?|\d+:\d+(:\d+)?|\d+(\.\d+)?)$/;
+    if (!validPatterns.test(duration)) {
+      console.warn(`[AudioEngine] Invalid duration "${duration}", using 8n`);
+      return '8n';
+    }
+    return duration;
   }
 
   playStab(notes: string[], duration: string, time?: number, velocity?: number) {
@@ -857,7 +874,7 @@ class AudioEngine {
             this.playArp(event.note, event.duration, t, event.velocity);
             break;
           case 'pluck':
-            this.playPluck(event.note, t, event.velocity);
+            this.playPluck(event.note, event.duration, t, event.velocity);
             break;
           case 'stab':
             this.playStab([event.note], event.duration, t, event.velocity);
@@ -902,9 +919,62 @@ class AudioEngine {
   }
 
   stop() {
+    // FIXED: Complete cleanup to prevent stuck notes
+    // 1. Cancel all scheduled events
+    Tone.getTransport().cancel(0);
+    // 2. Stop transport
     Tone.getTransport().stop();
+    // 3. Reset position
     Tone.getTransport().position = 0;
-    Tone.getTransport().cancel();
+    // 4. Release all notes on all PolySynths
+    this.releaseAll();
+  }
+
+  // CRITICAL: Release all notes on all PolySynths to prevent stuck notes
+  releaseAll() {
+    console.log('[AudioEngine] releaseAll: Releasing all notes on all synths');
+
+    // Release all PolySynths
+    const polySynths = [
+      this.melodySynth,
+      this.arpSynth,
+      this.pluckSynth2,
+      this.stabSynth,
+      this.pianoSynth,
+      this.stringsSynth,
+      this.stringsSynth2,
+      this.padSynth,
+      this.padSynth2,
+      this.vocalSynth1,
+      this.vocalSynth2,
+      this.vocalSynth3,
+    ];
+
+    polySynths.forEach((synth) => {
+      if (synth) {
+        try {
+          synth.releaseAll();
+        } catch (e) {
+          // Ignore errors - synth might already be released
+        }
+      }
+    });
+
+    // Release MonoSynths (they don't have releaseAll, but we trigger release)
+    const monoSynths = [
+      this.bassSynth,
+      this.acidSynth,
+    ];
+
+    monoSynths.forEach((synth) => {
+      if (synth) {
+        try {
+          synth.triggerRelease();
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    });
   }
 
   pause() {

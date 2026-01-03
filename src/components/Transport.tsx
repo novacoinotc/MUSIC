@@ -148,7 +148,9 @@ export function Transport() {
   const scheduleAllPatterns = useCallback((currentSeed: number) => {
     console.log('[Transport] scheduleAllPatterns: Starting with seed', currentSeed);
     console.log('[Transport] scheduleAllPatterns: Total sections:', sections.length);
-    Tone.getTransport().cancel();
+    // CRITICAL: Cancel all scheduled events AND release all notes
+    Tone.getTransport().cancel(0);
+    audioEngine.releaseAll();
 
     let startBar = 0;
     let totalKickNotes = 0;

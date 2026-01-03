@@ -1385,9 +1385,27 @@ export function generateSectionPatterns(
   let stab = section.hasStab
     ? generateStabPattern(section.bars, root, activeScale, stabParams, section.intensity, seed + 4000)
     : [];
-  let piano = section.hasPiano
+  // AFTERLIFE DARK CORE: Piano is PROHIBITED as protagonist
+  // Only allowed in breakdowns, and even then very sparse and filtered
+  const isAfterlifeStyle = style === 'dark' || style === 'hypnotic' || style === 'minimal';
+  const isPianoAllowedInSection = section.type === 'breakdown' && section.hasPiano;
+  const shouldGeneratePiano = isAfterlifeStyle
+    ? isPianoAllowedInSection  // Only in breakdowns for dark styles
+    : section.hasPiano;        // Normal behavior for other styles
+
+  let piano = shouldGeneratePiano
     ? generatePianoPatternWithProgression(section.bars, root, activeScale, pianoParams, progression, seed + 4500)
     : [];
+
+  // AFTERLIFE: Even in breakdown, reduce piano events further
+  if (isAfterlifeStyle && piano.length > 0) {
+    console.log(`[generators] AFTERLIFE: Reducing piano events from ${piano.length} for ${section.type}`);
+    // Keep only 30% of piano events - very sparse
+    piano = piano.filter(() => random() < 0.3);
+    // Lower velocity for remaining events
+    piano = piano.map(e => ({ ...e, velocity: Math.min(e.velocity * 0.5, 0.25) }));
+    console.log(`[generators] AFTERLIFE: Piano reduced to ${piano.length} events`);
+  }
   let strings = section.hasStrings
     ? generateStringsPatternWithProgression(section.bars, root, activeScale, stringsParams, progression, seed + 5000)
     : [];
@@ -1414,6 +1432,42 @@ export function generateSectionPatterns(
       vocal = generateVocalFallback(section.bars, root, activeScale, vocalParams, seed + 8500);
     }
     console.log(`[generators] Section ${section.type}: Generated ${vocal.length} vocal events`);
+  }
+
+  // AFTERLIFE DARK CORE: Bass must be ABSOLUTE PROTAGONIST
+  // Boost bass velocity, reduce all keys/lead instruments
+  if (isAfterlifeStyle) {
+    console.log('[generators] AFTERLIFE DARK CORE: Ensuring bass dominance');
+
+    // BOOST BASS: +15% velocity, ensure minimum velocity
+    bass = bass.map(e => ({
+      ...e,
+      velocity: Math.min(1.0, Math.max(0.75, e.velocity * 1.15))
+    }));
+
+    // REDUCE MELODY: -30% velocity for dark, filtered sound
+    melody = melody.map(e => ({
+      ...e,
+      velocity: Math.min(0.4, e.velocity * 0.7)
+    }));
+
+    // REDUCE ARPs: -25% velocity
+    arp = arp.map(e => ({
+      ...e,
+      velocity: Math.min(0.35, e.velocity * 0.75)
+    }));
+
+    // REDUCE PLUCKS: -35% velocity
+    pluck = pluck.map(e => ({
+      ...e,
+      velocity: Math.min(0.3, e.velocity * 0.65)
+    }));
+
+    // REDUCE STABS: -30% velocity
+    stab = stab.map(e => ({
+      ...e,
+      velocity: Math.min(0.35, e.velocity * 0.7)
+    }));
   }
 
   // GOOSEBUMPS: Apply micro-timing humanization to select instruments
