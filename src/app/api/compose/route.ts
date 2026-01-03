@@ -40,6 +40,21 @@ interface InstrumentRole {
   exit_section: number; // Section index where it exits (-1 = stays until end)
 }
 
+interface VocalRole {
+  enabled: boolean;
+  type: 'ooh' | 'aah' | 'choir';
+  character: string;
+  sections: number[]; // Which section indices have vocals
+}
+
+interface GoosebumpsConfig {
+  enabled: boolean;
+  micro_timing_ms: number; // 8-25ms humanization
+  exotic_fx_type: 'metal_scrape' | 'breath' | 'reverse_impact' | 'ritual_hit' | 'none';
+  exotic_fx_placement: number[]; // Section indices
+  tension_notes_enabled: boolean;
+}
+
 interface ProducerBlueprint {
   // Core musical identity
   bpm: number;
@@ -64,6 +79,12 @@ interface ProducerBlueprint {
     lead: InstrumentRole;
     hihat: InstrumentRole;
   };
+
+  // Vocals - CRITICAL: must be present and audible
+  vocal: VocalRole;
+
+  // Goosebumps mode for emotional moments
+  goosebumps: GoosebumpsConfig;
 
   // High-level producer notes
   production_notes: string[];
@@ -151,6 +172,19 @@ const BLUEPRINT_SCHEMA = {
         entry_section: { type: 'number' },
         exit_section: { type: 'number' },
       }),
+    }),
+    vocal: strictObj({
+      enabled: { type: 'boolean' },
+      type: { type: 'string', enum: ['ooh', 'aah', 'choir'] },
+      character: { type: 'string' },
+      sections: { type: 'array', items: { type: 'number' } },
+    }),
+    goosebumps: strictObj({
+      enabled: { type: 'boolean' },
+      micro_timing_ms: { type: 'number' },
+      exotic_fx_type: { type: 'string', enum: ['metal_scrape', 'breath', 'reverse_impact', 'ritual_hit', 'none'] },
+      exotic_fx_placement: { type: 'array', items: { type: 'number' } },
+      tension_notes_enabled: { type: 'boolean' },
     }),
     production_notes: { type: 'array', items: { type: 'string' } },
   }),
@@ -271,12 +305,29 @@ Lead (texture - NEVER bright, always filtered):
 Hihat (rhythm - subtle):
 - "subtle and ghostly", "minimal tick", "dark shimmer", "barely there"
 
+VOCAL RULES (CRITICAL - VOCALS MUST BE PRESENT AND AUDIBLE):
+- enabled: ALWAYS true (vocals are required for emotional moments)
+- type: Use "ooh", "aah", or "choir" - NEVER real words/lyrics
+- character: "ethereal", "distant", "heavenly", "haunting", "ghostly choir"
+- sections: MUST include at least one breakdown section index
+- Vocals appear in: breakdown, pre-drop tension, emotional peaks
+- Vocals are RARE but IMPACTFUL - not constant
+- Mix: Present enough to create emotion, heavily reverbed
+Example: vocal: { enabled: true, type: "choir", character: "ethereal and haunting", sections: [4] }
+
+GOOSEBUMPS MODE:
+Enable for emotional tracks to add:
+- micro_timing_ms: 8-25 (humanize hats/perc timing)
+- exotic_fx_type: "breath", "metal_scrape", "reverse_impact", or "ritual_hit"
+- exotic_fx_placement: section indices where fx appears (sparse - every 8-16 bars)
+- tension_notes_enabled: true for controlled dissonance in pre-drop
+
 FORBIDDEN character descriptions (will produce bad results):
 - "bright", "sparkling", "clear", "crisp", "punchy lead", "melodic", "beautiful"
 - "piano-like", "plucky", "sharp attack", "present", "upfront melody"
 
 Think like a producer crafting a record for a dark warehouse at 4am.
-The bass owns the room. Everything else is shadow and texture.
+The bass owns the room. Vocals add emotional depth. Everything else is shadow and texture.
 Aim for timelessness, not novelty.
 
 Return ONLY valid JSON matching the schema exactly.`;

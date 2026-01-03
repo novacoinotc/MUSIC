@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useTrackStore } from '@/stores/trackStore';
+import { audioEngine } from '@/lib/audioEngine';
 import { Slider } from './Slider';
-import { Mic2 } from 'lucide-react';
+import { Mic2, Play, Volume2 } from 'lucide-react';
 
 const VOCAL_TYPES = ['ooh', 'aah', 'eeh', 'choir'] as const;
 const GENDER_OPTIONS = ['female', 'male', 'both'] as const;
@@ -10,12 +12,56 @@ const GENDER_OPTIONS = ['female', 'male', 'both'] as const;
 export function VocalModule() {
   const vocal = useTrackStore((s) => s.vocal);
   const updateVocal = useTrackStore((s) => s.updateVocal);
+  const [testStatus, setTestStatus] = useState<'idle' | 'playing' | 'error'>('idle');
+
+  // Test vocal playback to verify audio chain works
+  const handleTestVocal = async () => {
+    try {
+      setTestStatus('playing');
+      console.log('[VocalModule] Testing vocal playback...');
+
+      // Make sure audio is initialized
+      await audioEngine.init();
+
+      // Trigger test vocal
+      const success = audioEngine.testVocal();
+      if (!success) {
+        setTestStatus('error');
+        console.error('[VocalModule] Vocal test failed - engine not ready');
+      } else {
+        console.log('[VocalModule] Vocal test triggered successfully');
+        // Reset status after 2 seconds
+        setTimeout(() => setTestStatus('idle'), 2000);
+      }
+    } catch (error) {
+      console.error('[VocalModule] Error testing vocal:', error);
+      setTestStatus('error');
+      setTimeout(() => setTestStatus('idle'), 2000);
+    }
+  };
 
   return (
     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Mic2 className="w-5 h-5 text-pink-400" />
-        <h3 className="text-lg font-bold text-white">VOCALS</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Mic2 className="w-5 h-5 text-pink-400" />
+          <h3 className="text-lg font-bold text-white">VOCALS</h3>
+        </div>
+        {/* Test Vocal Button */}
+        <button
+          onClick={handleTestVocal}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+            testStatus === 'playing'
+              ? 'bg-green-500/30 text-green-400 animate-pulse'
+              : testStatus === 'error'
+              ? 'bg-red-500/30 text-red-400'
+              : 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30'
+          }`}
+          title="Test vocal audio"
+        >
+          <Volume2 className="w-3 h-3" />
+          {testStatus === 'playing' ? 'Testing...' : testStatus === 'error' ? 'Error' : 'Test'}
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
