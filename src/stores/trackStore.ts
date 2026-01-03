@@ -71,6 +71,21 @@ export interface InstrumentRole {
   exit_section: number;
 }
 
+export interface VocalRole {
+  enabled: boolean;
+  type: 'ooh' | 'aah' | 'choir';
+  character: string;
+  sections: number[]; // Which section indices have vocals
+}
+
+export interface GoosebumpsConfig {
+  enabled: boolean;
+  micro_timing_ms: number; // 8-25ms humanization
+  exotic_fx_type: 'metal_scrape' | 'breath' | 'reverse_impact' | 'ritual_hit' | 'none';
+  exotic_fx_placement: number[]; // Section indices
+  tension_notes_enabled: boolean;
+}
+
 export interface ProducerBlueprint {
   bpm: number;
   key: string;
@@ -86,6 +101,10 @@ export interface ProducerBlueprint {
     lead: InstrumentRole;
     hihat: InstrumentRole;
   };
+  // Vocals - CRITICAL: must be present and audible
+  vocal?: VocalRole;
+  // Goosebumps mode for emotional moments
+  goosebumps?: GoosebumpsConfig;
   production_notes: string[];
 }
 

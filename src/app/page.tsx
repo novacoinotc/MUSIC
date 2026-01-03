@@ -13,6 +13,7 @@ import {
   Transport,
   Visualizer,
   AIPrompt,
+  GoosebumpsControl,
 } from '@/components';
 import { Zap, Music, Waves } from 'lucide-react';
 
@@ -92,6 +93,7 @@ export default function Home() {
             <HiHatModule />
             <PadModule />
             <VocalModule />
+            <GoosebumpsControl />
           </div>
         </div>
 

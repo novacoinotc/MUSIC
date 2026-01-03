@@ -5,6 +5,7 @@ import type {
   PluckParams, StabParams, PianoParams, StringsParams, AcidParams, PercParams,
   ArpParams, VocalParams, Scale, SectionConfig, TechnoStyle, GrooveType, ChordProgression
 } from '@/types';
+import { getMicroTimingMs, isGoosebumpsEnabled, shouldApplyTensionNote, getTensionNote } from './composeFromBlueprint';
 
 // ========== KA:ST / AFTERLIFE DARK SOUND DESIGN ==========
 // Reglas: dark, underground, emotivo, hipnótico
@@ -139,6 +140,60 @@ function seededRandom(seed: number): () => number {
     state = (state * 1103515245 + 12345) & 0x7fffffff;
     return state / 0x7fffffff;
   };
+}
+
+// ========== GOOSEBUMPS: MICRO-TIMING HUMANIZATION ==========
+// Add subtle timing jitter to make patterns feel more human/organic
+
+/**
+ * Apply micro-timing jitter to a time string (bar:beat:sixteenth)
+ * Returns the jittered time as seconds offset
+ */
+function applyMicroTiming(
+  timeStr: string,
+  msJitter: number,
+  random: () => number,
+  bpm: number = 122
+): string {
+  if (msJitter === 0) return timeStr;
+
+  // Parse time string
+  const [bar, beat, sixteenth] = timeStr.split(':').map(Number);
+
+  // Calculate the time in sixteenths
+  const totalSixteenths = bar * 16 + beat * 4 + sixteenth;
+
+  // Apply jitter (±msJitter in ms converted to sixteenth note offset)
+  const msPerSixteenth = (60000 / bpm) / 4; // ms per sixteenth note
+  const jitterSixteenths = ((random() * 2 - 1) * msJitter) / msPerSixteenth;
+
+  // Add jitter but clamp to avoid going negative
+  const jitteredSixteenths = Math.max(0, totalSixteenths + jitterSixteenths);
+
+  // Convert back to bar:beat:sixteenth
+  const newBar = Math.floor(jitteredSixteenths / 16);
+  const remaining = jitteredSixteenths % 16;
+  const newBeat = Math.floor(remaining / 4);
+  const newSixteenth = Math.round(remaining % 4);
+
+  return `${newBar}:${newBeat}:${newSixteenth}`;
+}
+
+/**
+ * Humanize a pattern's timing with micro-timing jitter
+ */
+function humanizePatternTiming(
+  events: NoteEvent[],
+  msJitter: number,
+  random: () => number,
+  bpm: number = 122
+): NoteEvent[] {
+  if (msJitter === 0) return events;
+
+  return events.map(event => ({
+    ...event,
+    time: applyMicroTiming(event.time, msJitter, random, bpm),
+  }));
 }
 
 function noteToMidi(note: string): number {
@@ -1139,7 +1194,8 @@ function generateStringsPatternWithProgression(
   return events;
 }
 
-// Vocal pattern with chord progression
+// Vocal pattern with chord progression - ROBUST VERSION
+// CRITICAL: Vocals MUST generate events when hasVocal=true
 function generateVocalPatternWithProgression(
   bars: number,
   root: string,
@@ -1152,12 +1208,16 @@ function generateVocalPatternWithProgression(
   const random = seededRandom(seed);
   const events: NoteEvent[] = [];
 
+  // Determine octave based on gender for proper formant range
   const octave = params.gender === 'male' ? 2 : params.gender === 'female' ? 4 : 3;
   const scaleNotes = getScaleNotes(root, scale, octave);
   const upperNotes = getScaleNotes(root, scale, octave + 1);
 
   const barsPerChord = 4;
+  // Play more frequently for better audibility
   const playEveryNBars = style === 'melodic' || style === 'progressive' ? 2 : 4;
+
+  console.log(`[generators] generateVocalPattern: bars=${bars}, root=${root}, scale=${scale}, gender=${params.gender}, type=${params.type}`);
 
   for (let bar = 0; bar < bars; bar++) {
     if (bar % playEveryNBars !== 0) continue;
@@ -1170,6 +1230,7 @@ function generateVocalPatternWithProgression(
       ? [...chordTones, upperTones[0]]
       : chordTones;
 
+    // Long sustained notes for that ethereal Afterlife feel
     const duration = random() > 0.5 ? '2m' : '1m';
 
     notes.forEach((note, i) => {
@@ -1177,7 +1238,61 @@ function generateVocalPatternWithProgression(
         note,
         time: `${bar}:0:0`,
         duration,
-        velocity: 0.45 + random() * 0.15 - (i * 0.02),
+        velocity: 0.55 + random() * 0.15 - (i * 0.02), // INCREASED base velocity
+      });
+    });
+  }
+
+  // FALLBACK: If no events generated but we should have vocals, create at least one
+  if (events.length === 0 && bars >= 4) {
+    console.warn('[generators] generateVocalPattern: FALLBACK - no events generated, creating fallback');
+    const fallbackNote = scaleNotes[0]; // Root note
+    events.push({
+      note: fallbackNote,
+      time: '0:0:0',
+      duration: '2m',
+      velocity: 0.55,
+    });
+    // Add harmony
+    if (scaleNotes.length > 2) {
+      events.push({
+        note: scaleNotes[2], // Third
+        time: '0:0:0',
+        duration: '2m',
+        velocity: 0.50,
+      });
+    }
+  }
+
+  console.log(`[generators] generateVocalPattern: generated ${events.length} vocal events`);
+  return events;
+}
+
+// Generate fallback vocal pattern - ensures vocals are ALWAYS present when requested
+function generateVocalFallback(
+  bars: number,
+  root: string,
+  scale: Scale,
+  params: VocalParams,
+  seed: number
+): NoteEvent[] {
+  const random = seededRandom(seed);
+  const events: NoteEvent[] = [];
+
+  const octave = params.gender === 'male' ? 2 : params.gender === 'female' ? 4 : 3;
+  const scaleNotes = getScaleNotes(root, scale, octave);
+
+  console.log(`[generators] generateVocalFallback: Creating guaranteed vocal events for ${bars} bars`);
+
+  // One long sustained chord every 4 bars
+  for (let bar = 0; bar < bars; bar += 4) {
+    const chord = [0, 2, 4]; // Simple triad
+    chord.forEach((idx, i) => {
+      events.push({
+        note: scaleNotes[idx % scaleNotes.length],
+        time: `${bar}:0:0`,
+        duration: '2m',
+        velocity: 0.55 - (i * 0.05),
       });
     });
   }
@@ -1235,6 +1350,7 @@ export function generateSectionPatterns(
   seed: number
 ): AllPatterns {
   const melodyWithRoot = { ...melodyParams, rootNote: root, scale };
+  const random = seededRandom(seed);
 
   // Parse chord progression for harmonic content
   const progression = parseChordProgression(chordProgression);
@@ -1243,50 +1359,104 @@ export function generateSectionPatterns(
   const useSecondaryScale = section.type === 'breakdown' || section.type === 'outro';
   const activeScale = useSecondaryScale ? secondaryScale : scale;
 
+  // Get goosebumps config for micro-timing
+  const microTimingMs = getMicroTimingMs();
+  const goosebumpsEnabled = isGoosebumpsEnabled();
+
+  // Generate base patterns
+  let kick = section.hasKick
+    ? generateKickPattern(section.bars, section.intensity, style, groove, seed)
+    : [];
+  let bass = section.hasBass
+    ? generateBassPatternWithProgression(section.bars, root, activeScale, bassParams, section.intensity, style, progression, seed + 1000)
+    : [];
+  let acid = section.hasAcid
+    ? generateAcidPattern(section.bars, root, activeScale, acidParams, section.intensity, seed + 1500)
+    : [];
+  let melody = section.hasMelody
+    ? generateMelodyPatternWithProgression(section.bars, { ...melodyWithRoot, scale: activeScale }, style, progression, seed + 2000)
+    : [];
+  let arp = section.hasArp
+    ? generateArpPattern(section.bars, root, activeScale, { ...melodyWithRoot, scale: activeScale }, arpParams, seed + 3000)
+    : [];
+  let pluck = section.hasPluck
+    ? generatePluckPattern(section.bars, root, activeScale, pluckParams, section.intensity, seed + 3500)
+    : [];
+  let stab = section.hasStab
+    ? generateStabPattern(section.bars, root, activeScale, stabParams, section.intensity, seed + 4000)
+    : [];
+  let piano = section.hasPiano
+    ? generatePianoPatternWithProgression(section.bars, root, activeScale, pianoParams, progression, seed + 4500)
+    : [];
+  let strings = section.hasStrings
+    ? generateStringsPatternWithProgression(section.bars, root, activeScale, stringsParams, progression, seed + 5000)
+    : [];
+  let pad = section.hasPad
+    ? generatePadPatternWithProgression(section.bars, root, activeScale, padParams, progression, seed + 5500)
+    : [];
+  let hihat = section.hasHihat
+    ? generateHihatPattern(section.bars, hihatParams, section.intensity, style, seed + 6000)
+    : [];
+  let openhat = section.hasHihat && hihatParams.openRatio > 30
+    ? generateHihatPattern(section.bars, { ...hihatParams, pattern: 'offbeat' }, section.intensity, style, seed + 6500)
+        .filter(e => e.note === 'open')
+    : [];
+  let perc = section.hasPerc
+    ? generatePercPattern(section.bars, percParams, section.intensity, style, seed + 7000)
+    : [];
+
+  // VOCALS: Generate with fallback to ensure they're present
+  let vocal: NoteEvent[] = [];
+  if (section.hasVocal) {
+    vocal = generateVocalPatternWithProgression(section.bars, root, activeScale, vocalParams, style, progression, seed + 8000);
+    // If still empty after generation, use fallback
+    if (vocal.length === 0) {
+      vocal = generateVocalFallback(section.bars, root, activeScale, vocalParams, seed + 8500);
+    }
+    console.log(`[generators] Section ${section.type}: Generated ${vocal.length} vocal events`);
+  }
+
+  // GOOSEBUMPS: Apply micro-timing humanization to select instruments
+  if (goosebumpsEnabled && microTimingMs > 0) {
+    console.log(`[generators] Applying Goosebumps micro-timing: ${microTimingMs}ms`);
+
+    // Humanize hihats and perc - never kick (keeps pocket tight)
+    hihat = humanizePatternTiming(hihat, microTimingMs, random);
+    openhat = humanizePatternTiming(openhat, microTimingMs, random);
+    perc = humanizePatternTiming(perc, microTimingMs * 0.8, random);
+
+    // Subtle humanization on bass offbeats
+    bass = humanizePatternTiming(bass, microTimingMs * 0.5, random);
+  }
+
+  // DEBUG: Log event counts for visibility
+  const eventCounts = {
+    kick: kick.length,
+    bass: bass.length,
+    melody: melody.length,
+    hihat: hihat.length,
+    pad: pad.length,
+    vocal: vocal.length,
+    arp: arp.length,
+    perc: perc.length,
+  };
+  console.log(`[generators] Section "${section.type}" (${section.bars} bars) event counts:`, eventCounts);
+
   return {
-    kick: section.hasKick
-      ? generateKickPattern(section.bars, section.intensity, style, groove, seed)
-      : [],
-    bass: section.hasBass
-      ? generateBassPatternWithProgression(section.bars, root, activeScale, bassParams, section.intensity, style, progression, seed + 1000)
-      : [],
-    acid: section.hasAcid
-      ? generateAcidPattern(section.bars, root, activeScale, acidParams, section.intensity, seed + 1500)
-      : [],
-    melody: section.hasMelody
-      ? generateMelodyPatternWithProgression(section.bars, { ...melodyWithRoot, scale: activeScale }, style, progression, seed + 2000)
-      : [],
-    arp: section.hasArp
-      ? generateArpPattern(section.bars, root, activeScale, { ...melodyWithRoot, scale: activeScale }, arpParams, seed + 3000)
-      : [],
-    pluck: section.hasPluck
-      ? generatePluckPattern(section.bars, root, activeScale, pluckParams, section.intensity, seed + 3500)
-      : [],
-    stab: section.hasStab
-      ? generateStabPattern(section.bars, root, activeScale, stabParams, section.intensity, seed + 4000)
-      : [],
-    piano: section.hasPiano
-      ? generatePianoPatternWithProgression(section.bars, root, activeScale, pianoParams, progression, seed + 4500)
-      : [],
-    strings: section.hasStrings
-      ? generateStringsPatternWithProgression(section.bars, root, activeScale, stringsParams, progression, seed + 5000)
-      : [],
-    pad: section.hasPad
-      ? generatePadPatternWithProgression(section.bars, root, activeScale, padParams, progression, seed + 5500)
-      : [],
-    hihat: section.hasHihat
-      ? generateHihatPattern(section.bars, hihatParams, section.intensity, style, seed + 6000)
-      : [],
-    openhat: section.hasHihat && hihatParams.openRatio > 30
-      ? generateHihatPattern(section.bars, { ...hihatParams, pattern: 'offbeat' }, section.intensity, style, seed + 6500)
-          .filter(e => e.note === 'open')
-      : [],
-    perc: section.hasPerc
-      ? generatePercPattern(section.bars, percParams, section.intensity, style, seed + 7000)
-      : [],
-    vocal: section.hasVocal
-      ? generateVocalPatternWithProgression(section.bars, root, activeScale, vocalParams, style, progression, seed + 8000)
-      : [],
+    kick,
+    bass,
+    acid,
+    melody,
+    arp,
+    pluck,
+    stab,
+    piano,
+    strings,
+    pad,
+    hihat,
+    openhat,
+    perc,
+    vocal,
   };
 }
 

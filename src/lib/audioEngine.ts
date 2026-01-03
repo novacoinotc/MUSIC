@@ -339,32 +339,35 @@ class AudioEngine {
         envelope: { attack: 0.001, decay: 0.025, sustain: 0, release: 0.015 },
       }).connect(shakerFilter);
 
-      // ===== VOCALS (Formant Synthesis for ooh/aah sounds) =====
-      // Using 3 bandpass-filtered oscillators to simulate vocal formants
-      this.vocalReverb = new Tone.Reverb({ decay: 4.5, wet: 0.5 }).connect(this.masterGain);
-      this.vocalDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.2, wet: 0.25 }).connect(this.vocalReverb);
-      this.vocalChorus = new Tone.Chorus({ frequency: 2, depth: 0.5, wet: 0.4 }).connect(this.vocalDelay);
-      this.vocalGain = new Tone.Gain(0.45).connect(this.vocalChorus);
+      // ===== VOCALS (AFTERLIFE DARK CORE - Formant Synthesis) =====
+      // CRITICAL: Vocals MUST be audible - increased gain and proper chain
+      // Using 3 bandpass-filtered oscillators to simulate vocal formants (ooh/aah/choir)
+      console.log('[AudioEngine] AFTERLIFE DARK CORE: Initializing vocal synths with AUDIBLE gain');
+      this.vocalReverb = new Tone.Reverb({ decay: 5.5, wet: 0.55 }).connect(this.masterGain);
+      this.vocalDelay = new Tone.PingPongDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.3 }).connect(this.vocalReverb);
+      this.vocalChorus = new Tone.Chorus({ frequency: 1.5, depth: 0.6, wet: 0.45 }).connect(this.vocalDelay);
+      // INCREASED GAIN: vocals must cut through the mix
+      this.vocalGain = new Tone.Gain(0.65).connect(this.vocalChorus);
 
-      // Formant 1 (low)
-      this.vocalFilter1 = new Tone.Filter({ frequency: 500, type: 'bandpass', Q: 5 }).connect(this.vocalGain);
+      // Formant 1 (low) - warmer, lower Q for fuller sound
+      this.vocalFilter1 = new Tone.Filter({ frequency: 450, type: 'bandpass', Q: 3.5 }).connect(this.vocalGain);
       this.vocalSynth1 = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.3, decay: 0.5, sustain: 0.6, release: 1.5 },
+        envelope: { attack: 0.25, decay: 0.6, sustain: 0.65, release: 2 },
       }).connect(this.vocalFilter1);
 
-      // Formant 2 (mid)
-      this.vocalFilter2 = new Tone.Filter({ frequency: 1000, type: 'bandpass', Q: 4 }).connect(this.vocalGain);
+      // Formant 2 (mid) - main body of the vocal
+      this.vocalFilter2 = new Tone.Filter({ frequency: 950, type: 'bandpass', Q: 3 }).connect(this.vocalGain);
       this.vocalSynth2 = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'triangle' },
-        envelope: { attack: 0.35, decay: 0.6, sustain: 0.5, release: 1.8 },
+        envelope: { attack: 0.3, decay: 0.7, sustain: 0.55, release: 2.2 },
       }).connect(this.vocalFilter2);
 
-      // Formant 3 (high)
-      this.vocalFilter3 = new Tone.Filter({ frequency: 2800, type: 'bandpass', Q: 6 }).connect(this.vocalGain);
+      // Formant 3 (high) - presence/air, but filtered for dark sound
+      this.vocalFilter3 = new Tone.Filter({ frequency: 2400, type: 'bandpass', Q: 4 }).connect(this.vocalGain);
       this.vocalSynth3 = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.4, decay: 0.4, sustain: 0.4, release: 2 },
+        envelope: { attack: 0.35, decay: 0.5, sustain: 0.45, release: 2.5 },
       }).connect(this.vocalFilter3);
 
       this.initialized = true;
@@ -673,8 +676,10 @@ class AudioEngine {
       this.vocalReverb.wet.value = params.reverbMix / 100;
     }
     if (this.vocalGain) {
-      // Increased gain for more audible vocals
-      this.vocalGain.gain.value = 0.35 + (params.mix / 100) * 0.25;
+      // INCREASED gain for AUDIBLE vocals - mix range 0.45 to 0.85
+      const gainValue = 0.45 + (params.mix / 100) * 0.4;
+      this.vocalGain.gain.value = gainValue;
+      console.log(`[AudioEngine] updateVocal: gain=${gainValue.toFixed(2)}, type=${params.type}, gender=${params.gender}`);
     }
   }
 
@@ -795,15 +800,34 @@ class AudioEngine {
   }
 
   playVocal(notes: string | string[], duration: string, time?: number, velocity?: number) {
-    if (!this.vocalSynth1 || !this.vocalSynth2 || !this.vocalSynth3) return;
+    if (!this.vocalSynth1 || !this.vocalSynth2 || !this.vocalSynth3) {
+      console.warn('[AudioEngine] playVocal: Vocal synths not initialized!');
+      return;
+    }
     const t = time ?? Tone.now();
-    const v = velocity ?? 0.55; // Increased default velocity
+    const v = velocity ?? 0.65; // INCREASED default velocity for audibility
     const notesArr = Array.isArray(notes) ? notes : [notes];
 
-    // All three formant layers play the same notes
+    // DEBUG: Log vocal playback
+    console.log(`[AudioEngine] playVocal: notes=${notesArr.join(',')}, duration=${duration}, time=${t.toFixed(2)}, velocity=${v.toFixed(2)}`);
+
+    // All three formant layers play the same notes with slight timing offsets
+    // This creates the characteristic "choir" sound
     this.vocalSynth1.triggerAttackRelease(notesArr, duration, t, v);
-    this.vocalSynth2.triggerAttackRelease(notesArr, duration, t + 0.02, v * 0.85);
-    this.vocalSynth3.triggerAttackRelease(notesArr, duration, t + 0.04, v * 0.6);
+    this.vocalSynth2.triggerAttackRelease(notesArr, duration, t + 0.015, v * 0.9);
+    this.vocalSynth3.triggerAttackRelease(notesArr, duration, t + 0.03, v * 0.7);
+  }
+
+  // Test function to verify vocals work - call from UI
+  testVocal() {
+    console.log('[AudioEngine] testVocal: Testing vocal playback...');
+    if (!this.initialized) {
+      console.error('[AudioEngine] testVocal: Engine not initialized!');
+      return false;
+    }
+    this.playVocal(['A4', 'E5'], '2n', Tone.now(), 0.7);
+    console.log('[AudioEngine] testVocal: Test vocal triggered (A4, E5)');
+    return true;
   }
 
   // ========== PATTERN SCHEDULING ==========
